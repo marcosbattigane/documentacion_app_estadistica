@@ -1,0 +1,305 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-tabla]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=0.8in}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{longtable}
+
+% --- Colors ---
+\definecolor{primary}{RGB}{0, 51, 102}
+\definecolor{secondary}{RGB}{102, 102, 102}
+\definecolor{headergray}{RGB}{240, 240, 240}
+
+% --- Configuration ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={PRD - Aplicación de Análisis Estadístico para Básquet},
+}
+
+\titleformat{\section}{\large\bfseries\color{primary}}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{primary}}{\thesubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\footnotesize \color{secondary} PRD · Aplicación de Estadísticas de Básquet}
+\lhead{\footnotesize \color{secondary} ID: PRD-BSKT-2026-001}
+\rfoot{\footnotesize Página \thepage}
+
+\onehalfspacing
+
+% --- Document Information ---
+\title{
+    \vspace{1cm}
+    \textbf{\Large{Documento de Requerimientos de Producto (PRD)}} \\
+    \huge{\textbf{Sistema de Análisis Estadístico para Básquet Formativo}} \\
+    \vspace{0.5cm}
+    \large{Estado: \textbf{Borrador Técnico} | Versión: 1.0} \\
+    \vspace{1cm}
+}
+\author{Ingeniería de Software · Proyecto Estadísticas Básquet}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{ID del documento:} & PRD-BSKT-2026-001 \\
+\textbf{Producto:} & StatsPro Basketball (Nombre en clave) \\
+\textbf{Ingeniería:} & Equipo de 2 Ingenieros de Software \\
+\textbf{Clasificación:} & Interno — Desarrollo Profesional \\
+\textbf{Stack Principal:} & SQLite (Local), Python/Pandas (Análisis), Java/Python (UI) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Descripción General del Producto}
+
+\subsection{Planteamiento del Problema}
+El análisis estadístico en el básquet formativo sufre de una brecha crítica entre la recolección de datos y la utilidad táctica. Los entrenadores operan bajo condiciones de alta presión donde la toma de decisiones basada en datos es limitada por herramientas fragmentadas.
+
+\begin{longtable}{lp{5cm}p{5cm}l}
+\caption{Matriz de Problemas Operativos} \\
+\toprule
+\rowcolor{headergray} \textbf{\#} & \textbf{Problema} & \textbf{Impacto Operativo} & \textbf{Línea Base} \\
+\midrule
+1 & Carga manual ineficiente. & Interferencia táctica durante el juego; pérdida de foco. & > 20 min/partido. \\
+2 & Ceguera estadística. & Decisiones basadas en intuición, no en métricas avanzadas (PPP, Eff). & Análisis 0\% automatizado. \\
+3 & Fragmentación de datos. & Imposibilidad de seguimiento histórico o comparativo de rivales. & Datos aislados en papel/Excel. \\
+4 & Inestabilidad de red. & Apps web fallan en estadios sin conectividad. & Requiere 100\% online. \\
+5 & Rigidez de plataformas. & El DT no puede integrar los datos de "Ges Deportivo" fácilmente. & Ingesta manual post-partido. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Visión del Producto}
+Desarrollar una aplicación multiplataforma (PC y Mobile) de ejecución local que centralice el conocimiento deportivo en un motor estadístico profesional. El sistema permitirá una gestión integral \textbf{sin necesidad de internet}, con un flujo de trabajo optimizado mediante la carga de planillas de "Ges Deportivo".
+
+\subsection{Métricas de Éxito}
+\begin{itemize}
+    \item \textbf{MTTR (Time to Report):} Tiempo desde la carga del archivo hasta el informe completo < 2 minutos.
+    \item \textbf{Tasa de Automatización:} \% de estadísticas de partido generadas sin intervención manual > 95\%.
+    \item \textbf{Disponibilidad Offline:} 100\% de las funcionalidades críticas operativas sin conexión.
+    \item \textbf{North Star Metric:} Número de sesiones de análisis táctico realizadas por el DT por semana.
+\end{itemize}
+
+\section{Perfiles de Usuario}
+
+\begin{tabularx}{\textwidth}{p{3cm}XXp{3cm}}
+\toprule
+\rowcolor{headergray} \textbf{Perfil} & \textbf{Rol y Contexto} & \textbf{Objetivo Principal} & \textbf{Problema Actual} \\
+\midrule
+\textbf{Director Técnico} & Líder táctico en categorías formativas a profesional. & Optimizar el rendimiento del equipo mediante datos objetivos. & El cálculo manual de Eff/PPP es tedioso. \\
+\textbf{Analista / Asistente} & Responsable de la carga y procesamiento de datos. & Proveer informes rápidos y precisos al DT. & Carga redundante de datos existentes en Ges Deportivo. \\
+\bottomrule
+\end{tabularx}
+
+\section{Metas y No Metas}
+
+\subsection{En el Alcance (v1.0)}
+\begin{itemize}
+    \item \textbf{Motor de Ingesta:} Subida manual de planillas Excel descargadas de "Ges Deportivo".
+    \item \textbf{Persistencia Local:} Base de datos SQLite única por instalación de usuario.
+    \item \textbf{Motor Estadístico:} Análisis de tendencias, PPP, porcentajes por zona y eficiencia con Pandas.
+    \item \textbf{Multiplataforma:} Ejecución en Windows, Linux, Mac y dispositivos móviles.
+\end{itemize}
+
+\subsection{Fuera de Alcance}
+\begin{itemize}
+    \item \textbf{Sincronización Cloud:} No se contempla almacenamiento en la nube inicialmente.
+    \item \textbf{Importación Automática/API:} No hay conexión directa con servidores de Ges Deportivo (flujo manual).
+    \item \textbf{IA Predictiva:} No se incluirán modelos de predicción de resultados en v1.0.
+\end{itemize}
+
+\section{Acuerdo de Ingeniería y Estándares}
+El equipo se compromete a seguir los siguientes principios para garantizar un software profesional y mantenible:
+
+\subsection{Principios de Desarrollo}
+\begin{itemize}
+    \item \textbf{Diseño Precede a la Implementación:} No se escribe código sin un diseño previo aprobado (ADR).
+    \item \textbf{Atomicidad:} Confirmaciones (commits) pequeñas y lógicas. Formato: \texttt{tipo(alcance): descripción}.
+    \item \textbf{Gestión de Ramas:} Uso de \texttt{feature/nombre-tarea}, \texttt{hotfix/descripción} y \texttt{release/vX.Y}.
+    \item \textbf{Higiene del Repositorio:} Prohibido subir binarios, bases de datos SQLite con datos reales o archivos temporales.
+\end{itemize}
+
+\subsection{Calidad de Código y Pruebas}
+\begin{itemize}
+    \item \textbf{Documentación:} Estilo Javadoc/Doxygen para todos los módulos y métodos públicos.
+    \item \textbf{Pruebas:} Cobertura mínima del 80\% en la lógica de negocio (especialmente en el motor estadístico).
+    \item \textbf{Análisis Estático:} Uso de \texttt{flake8}/\texttt{pylint} para Python y \texttt{Checkstyle} para Java.
+\end{itemize}
+
+\section{Gestión de Tareas}
+\begin{itemize}
+    \item \textbf{Prioridad:} Urgente (bloqueante), Alta (impacto directo), Media (importante), Baja (mejora).
+    \item \textbf{Tamaño (Esfuerzo):} XS (<1 día), S (1-2 días), M (3-5 días), L (6-10 días).
+\end{itemize}
+
+\section{Arquitectura de Datos (Basado en DER)}
+El sistema utiliza una base de datos relacional local (\textbf{SQLite}) con el siguiente esquema normalizado:
+
+\subsection{Entidades Principales}
+\begin{itemize}
+    \item \textbf{Gestión de Identidad:} \texttt{usuario}, \texttt{club}, \texttt{usuarioClub} (N:M).
+    \item \textbf{Estructura Deportiva:} \texttt{jugador}, \texttt{categoria}, \texttt{competencia}, \texttt{inscripcion}.
+    \item \textbf{Gestión de Listas:} \texttt{listaBuenaFe}, \texttt{jugadorListaBuenaFe}.
+    \item \textbf{Eventos y Estadísticas:} \texttt{partido}, \texttt{jugadorPartido} (Contiene 20+ métricas: Puntos, T2, T3, TL, Rebotes, Asistencias, etc.).
+\end{itemize}
+
+\subsection{Reglas de Integridad}
+\begin{itemize}
+    \item \textbf{Vínculos:} Relación 1:1 entre \texttt{inscripcion} y \texttt{listaBuenaFe}.
+    \item \textbf{Persistencia:} El historial de un jugador en diferentes clubes se mantiene vía \texttt{jugadorClub}.
+    \item \textbf{Métricas:} La tabla \texttt{jugadorPartido} actúa como el hecho (fact table) para el motor de análisis.
+\end{itemize}
+
+\section{Registro de Decisiones Arquitectónicas (ADR)}
+Siguiendo el estándar EOP, se deben documentar las siguientes decisiones críticas:
+
+\begin{longtable}{lll}
+\toprule
+\rowcolor{headergray} \textbf{ID} & \textbf{Título} & \textbf{Estado} \\
+\midrule
+ADR-001 & Arquitectura Local-First y Persistencia SQLite & Aceptado \\
+ADR-002 & Elección de Framework UI (Java/Compose vs Python/Flet) & Pendiente \\
+ADR-003 & Protocolo de Ingesta y Limpieza de Datos (Pandas) & Aceptado \\
+ADR-004 & Estrategia de Versionado de Base de Datos y Migraciones & Pendiente \\
+ADR-005 & Generación de Reportes PDF y Visualización Local & Aceptado \\
+\bottomrule
+\end{longtable}
+
+\section{Gestión de Tareas y Plan de Entregas}
+
+\subsection{Hito 1: Cimentación y Modelo Relacional (v0.1)}
+\textbf{Epic E1: Persistencia y Entidades}
+\begin{itemize}
+    \item \textbf{US-101: Implementación de la Base de Datos SQLite}
+    \begin{itemize}
+        \item \textit{Story:} Como desarrollador, quiero crear el esquema relacional completo para asegurar la integridad de los datos deportivos.
+        \item \textit{Criterios de Aceptación:}
+        \begin{itemize}
+            \item AC1: Script de creación de tablas (\texttt{DDL}) validado contra el DER.
+            \item AC2: Implementación de \texttt{Triggers} para cálculos automáticos simples (ej. puntos totales).
+            \item AC3: Pruebas de carga con 1,000 registros de jugadores sin degradación de latencia.
+            \item AC4: Generación de un Diccionario de Datos técnico documentado en el repositorio.
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{US-102: Módulo de Gestión de Clubes y Usuarios}
+    \begin{itemize}
+        \item \textit{Story:} Como DT, quiero registrar mi cuenta local y mis clubes para segmentar mis estadísticas.
+        \item \textit{Criterios de Aceptación:}
+        \begin{itemize}
+            \item AC1: Pantalla de login/registro local con cifrado de contraseña (SHA-256).
+            \item AC2: Soporte para múltiples clubes bajo un mismo perfil de usuario.
+            \item AC3: Implementación de roles (\texttt{rolEntrenador}) que limiten la edición de datos críticos.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Hito 2: Motor de Ingesta e Inteligencia de Datos (v0.2)}
+\textbf{Epic E2: Integración "Ges Deportivo"}
+\begin{itemize}
+    \item \textbf{US-201: Parseo de Planillas Excel con Pandas}
+    \begin{itemize}
+        \item \textit{Story:} Como analista, quiero procesar los archivos de Ges Deportivo para eliminar el error humano en la transcripción.
+        \item \textit{Criterios de Aceptación:}
+        \begin{itemize}
+            \item AC1: Mapeo exitoso de columnas de Excel a campos de la tabla \texttt{jugadorPartido}.
+            \item AC2: Manejo de errores: Si un jugador no está en la base de datos, el sistema debe ofrecer "Crear Nuevo" o "Vincular Existente".
+            \item AC3: Verificación de consistencia: La suma de puntos individuales debe coincidir con el resultado final del partido (margen de error 0).
+            \item AC4: Log de importación que detalle registros procesados, saltados y errores encontrados.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\textbf{Epic E3: Motor Estadístico Pro}
+\begin{itemize}
+    \item \textbf{US-202: Cálculo de Métricas Avanzadas}
+    \begin{itemize}
+        \item \textit{Story:} Como DT, quiero ver métricas como \texttt{eFG\%} y \texttt{PER} para evaluar el impacto real de mis jugadores.
+        \item \textit{Criterios de Aceptación:}
+        \begin{itemize}
+            \item AC1: Implementación de fórmulas de eficiencia (Eff), PPP (Puntos por Posesión) y \% de Rebotes.
+            \item AC2: Generación de tabla comparativa "Equipo vs Rival" basada en los datos del Excel.
+            \item AC3: Soporte para filtrado dinámico por Temporada y Competencia en los cálculos.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Hito 3: Despliegue Multiplataforma y UX (v0.3)}
+\textbf{Epic E4: Interfaz de Usuario Adaptable}
+\begin{itemize}
+    \item \textbf{US-301: GUI para Desktop y Mobile}
+    \begin{itemize}
+        \item \textit{Story:} Como usuario, quiero una experiencia fluida que no requiera internet para navegar mis estadísticas.
+        \item \textit{Criterios de Aceptación:}
+        \begin{itemize}
+            \item AC1: Tiempo de arranque de la aplicación < 3 segundos en hardware estándar.
+            \item AC2: Modo oscuro/claro disponible y guardado en preferencias locales.
+            \item AC3: Sincronización manual: Botón de "Exportar Base de Datos" (.sqlite) para backup o transferencia.
+            \item AC4: Interfaz responsiva probada en resoluciones de 1080p (PC) y 720p (Mobile).
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Hito 4: Visualización y Entrega Final (v1.0)}
+\textbf{Epic E5: Analítica Visual}
+\begin{itemize}
+    \item \textbf{US-401: Dashboards e Informes}
+    \begin{itemize}
+        \item \textit{Story:} Como DT, quiero exportar un PDF con el análisis del partido para enviarlo por WhatsApp a mis jugadores.
+        \item \textit{Criterios de Aceptación:}
+        \begin{itemize}
+            \item AC1: Gráficos de tendencia de rendimiento en los últimos 5 partidos.
+            \item AC2: Exportación PDF con diseño profesional (incluye logo del club).
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\section{Requisitos No Funcionales (NFR)}
+
+\begin{longtable}{lp{4cm}p{6cm}l}
+\toprule
+\rowcolor{headergray} \textbf{ID} & \textbf{Requisito} & \textbf{Medición / Umbral} & \textbf{Severidad} \\
+\midrule
+NFR-1 & Portabilidad & Ejecución nativa en Windows 10+, Android 9+, iOS 14+. & Bloqueante \\
+NFR-2 & Rendimiento Ingesta & Procesamiento de Excel con Pandas < 5 seg. & Alta \\
+NFR-3 & Fiabilidad Datos & Integridad referencial en SQLite (Foreign Keys activas). & Bloqueante \\
+NFR-4 & Usabilidad & Carga de un partido completo en < 3 clics (desde la selección del archivo). & Media \\
+\bottomrule
+\end{longtable}
+
+\section{Definición de "Hecho" (Definition of Done)}
+Una historia de usuario se considera \textbf{Hecha} cuando:
+\begin{enumerate}
+    \item El código está integrado en la rama principal sin conflictos.
+    \item Pasa las pruebas unitarias y de integración (Cobertura > 80\%).
+    \item El ADR correspondiente ha sido aprobado y documentado.
+    \item La interfaz ha sido validada en al menos dos plataformas (ej. Desktop y Mobile).
+    \item No existen fugas de memoria ni degradación del rendimiento en SQLite.
+\end{enumerate}
+
+\end{document}
