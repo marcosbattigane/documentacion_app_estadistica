@@ -242,15 +242,29 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \item \textit{Objetivo funcional:} habilitar un esquema relacional local verificable para todo el ciclo del producto.
         \item \textit{Capa de infraestructura:} clase \texttt{SQLiteManager} en \texttt{src/infrastructure/persistence/database\_manager.py} con métodos de conexión e inicialización atómica.
         \item \textit{Base SQL obligatoria:} \texttt{src/infrastructure/persistence/sql/schema.sql}, \texttt{views.sql}, \texttt{seed.sql}.
+        \item \textit{Detalle de vistas a desarrollar:}
+        \begin{itemize}
+            \item \texttt{v\_partidos\_resumen}: una fila por partido con competencia, fecha, club local/visitante (nombre), marcador final y estado.
+            \item \texttt{v\_boxscore\_completo}: una fila por jugador-partido con identificación de partido, club, jugador, minutos y rubros estadísticos crudos.
+            \item \texttt{v\_jugador\_totales\_temporada}: acumulados y promedios por jugador-temporada-competencia para ranking y líderes.
+            \item \texttt{v\_listas\_detalle}: jugadores habilitados por inscripción/lista de buena fe con estado de habilitación y club asociado.
+        \end{itemize}
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
-            \item AC1: schema idempotente con \texttt{CREATE TABLE IF NOT EXISTS}, FKs activas, \texttt{ON DELETE/UPDATE CASCADE} y \texttt{CHECK} de métricas.
-            \item AC2: vistas operativas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
-            \item AC3: protección de división por cero mediante \texttt{NULLIF} o \texttt{CASE}.
-            \item AC4: datos semilla útiles para validar consultas y motor estadístico.
+            \item \texttt{[ ]} AC1: schema idempotente con \texttt{CREATE TABLE IF NOT EXISTS}, FKs activas, \texttt{ON DELETE/UPDATE CASCADE} y \texttt{CHECK} de métricas.
+            \item \texttt{[ ]} AC2: vistas operativas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
+            \item \texttt{[ ]} AC3: todas las divisiones de vistas protegidas con \texttt{NULLIF}/\texttt{CASE}.
+            \item \texttt{[ ]} AC4: datos semilla suficientes para probar consultas, listados y cálculos.
+            \item \texttt{[ ]} AC5: definición de columnas estable (nombres y tipos) para consumo desde Pandas sin transformaciones ambiguas.
         \end{itemize}
         \item \textit{Reglas de negocio DB:} \texttt{idClubLocal != idClubVisitante}, coherencia \texttt{fechaHasta >= fechaDesde}, unicidad en \texttt{listaBuenaFe.idInscripcion}.
-        \item \textit{Testing mínimo:} \texttt{tests/integration/test\_database\_schema.py} cubriendo existencia de tablas/vistas, integridad referencial, constraints, seed y consultas de vistas.
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario SQL smoke-test: ejecución limpia de \texttt{schema.sql}, \texttt{views.sql}, \texttt{seed.sql}.
+            \item Integración: \texttt{tests/integration/test\_database\_schema.py} para existencia de tablas/vistas, FKs y constraints.
+            \item Integración por vista: asserts de columnas esperadas y de semántica de datos para las 4 vistas.
+            \item Integración de robustez: casos de división por cero en vistas deben devolver 0.0 o \texttt{NULL} controlado, nunca error.
+        \end{itemize}
     \end{itemize}
 
     \item \textbf{US-102: DatabaseManager y Patrón Repository}
@@ -357,21 +371,46 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \item \textit{Archivos a crear:}
         \texttt{src/infrastructure/logging/logger\_config.py},
         \texttt{src/application/services/execution\_context.py},
+        \texttt{src/infrastructure/logging/seq\_handler.py},
+        \texttt{docker-compose.yml} (perfil opcional observabilidad con SEQ),
+        \texttt{tests/unit/test\_execution\_context.py},
         \texttt{tests/unit/test\_logging\_redaction.py}.
+        \item \textit{Eventos de log obligatorios:}
+        \begin{itemize}
+            \item inicio/fin de comando CLI, con resultado (OK/ERROR) y duración;
+            \item login, logout, cambio de club activo y fallos de autenticación;
+            \item inicio/fin de transacciones críticas (carga partido, importación Excel, backup/restore);
+            \item creación/actualización de entidades principales (club, jugador, competencia, partido);
+            \item excepciones de dominio y errores de infraestructura con clasificación por severidad.
+        \end{itemize}
+        \item \textit{Modos de operación de logging:}
+        \begin{itemize}
+            \item \textbf{Modo A (local-file):} logs en \texttt{./logs/statspro.log} con rotación local.
+            \item \textbf{Modo B (SEQ):} levantar SEQ con \texttt{docker-compose.yml}, enviar logs estructurados al endpoint HTTP de SEQ y analizar trazas en UI web.
+        \end{itemize}
+        \item \textit{Rol de \texttt{execution\_context.py}:} define el contexto de ejecución por request/comando (\texttt{correlation\_id}, usuario, club activo, nombre de comando, timestamp de inicio, ambiente). Este contexto se crea al comienzo del comando, se propaga a casos de uso/repositorios y serializa metadata homogénea para todos los logs.
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
-            \item AC1: niveles DEBUG/INFO/WARNING/ERROR en formato estructurado.
-            \item AC2: \texttt{correlation\_id} UUIDv4 generado al inicio de cada comando y propagado a use cases/repos.
-            \item AC3: redacción de secretos (password, tokens, session-id, hashes sensibles).
+            \item \texttt{[ ]} AC1: niveles DEBUG/INFO/WARNING/ERROR en formato estructurado JSON.
+            \item \texttt{[ ]} AC2: \texttt{correlation\_id} UUIDv4 generado al inicio de cada comando y propagado a use cases/repos.
+            \item \texttt{[ ]} AC3: redacción de secretos (password, tokens, session-id, hashes sensibles).
+            \item \texttt{[ ]} AC4: selección de sink por configuración (\texttt{local-file} o \texttt{seq}) sin cambiar código de negocio.
+            \item \texttt{[ ]} AC5: en modo SEQ, eventos visibles por \texttt{correlation\_id}, \texttt{command\_name} y nivel.
         \end{itemize}
-        \item \textit{Testing mínimo:} pruebas automáticas de redacción de secretos y trazabilidad de eventos críticos.
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario: creación/propagación de \texttt{execution\_context} y validación de campos obligatorios.
+            \item Unitario: pruebas de redacción de secretos y normalización de eventos.
+            \item Integración: flujo CLI completo verificando correlación de logs de punta a punta.
+            \item Integración opcional observabilidad: prueba de envío de eventos a SEQ levantado por \texttt{docker-compose}.
+        \end{itemize}
     \end{itemize}
 \end{itemize}
 
 \subsection{Hito 2: Motor de Ingesta y Análisis (v0.2)}
 \textbf{Objetivo del hito:} automatizar la carga desde Ges Deportivo y producir métricas avanzadas confiables.
 
-\textbf{Épica E3 — Integración Ges Deportivo}
+\textbf{Épica H2-E1 — Integración Ges Deportivo}
 \begin{itemize}
     \item \textbf{US-201: Parseo de Planillas Excel con Pandas}
     \begin{itemize}
@@ -383,10 +422,28 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/infrastructure/ingest/ingest\_service.py},
         \texttt{tests/integration/test\_excel\_import.py},
         \texttt{tests/fixtures/ges\_deportivo\_sample.xlsx}.
-        \item \textit{Criterios de aceptación técnicos:} validación de formato, merge inteligente, consistencia de puntos, preview sin persistencia y log de resultados.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: validación previa de columnas obligatorias y tipado mínimo esperado.
+            \item \texttt{[ ]} AC2: comando \texttt{preview} sin persistencia con reporte de filas válidas/erróneas.
+            \item \texttt{[ ]} AC3: merge por DNI para crear o vincular jugador sin duplicados.
+            \item \texttt{[ ]} AC4: consistencia entre suma de puntos individuales y marcador de partido.
+            \item \texttt{[ ]} AC5: importación atómica por partido con rollback ante error.
+            \item \texttt{[ ]} AC6: reporte final con cantidad de creados, actualizados, rechazados y causa.
+        \end{itemize}
         \item \textit{Reglas:} filas sin DNI se rechazan con log, clubes/competencias faltantes se crean de forma controlada.
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario parser: mapeo de columnas, tipado y errores de formato.
+            \item Unitario ingest-service: estrategias de merge (nuevo/existente) y rechazo de filas inválidas.
+            \item Integración: importación de fixture real a DB \texttt{:memory:} verificando persistencia y rollback.
+            \item Integración: ejecución de \texttt{preview} debe dejar DB sin cambios.
+        \end{itemize}
     \end{itemize}
+\end{itemize}
 
+\textbf{Épica H2-E2 — Motor Estadístico Pro}
+\begin{itemize}
     \item \textbf{US-202: Cálculo de Métricas Avanzadas}
     \begin{itemize}
         \item \textit{Objetivo funcional:} transformar boxscore crudo en indicadores tácticos accionables.
@@ -397,9 +454,25 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/application/dtos/metricas\_dto.py},
         \texttt{tests/unit/test\_formulas.py}.
         \item \textit{Fórmulas mínimas:} eFG\%, EFF, PPP, posesiones y porcentaje de rebotes.
-        \item \textit{Criterios de aceptación técnicos:} manejo de ceros/NaN, filtros por temporada/competencia, comparativa equipo vs rival.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: implementación de fórmulas documentadas con salida determinística.
+            \item \texttt{[ ]} AC2: manejo de división por cero y \texttt{NaN}/\texttt{inf} con normalización explícita.
+            \item \texttt{[ ]} AC3: filtros por temporada, competencia y rango de partidos.
+            \item \texttt{[ ]} AC4: reporte comparativo Equipo vs Rival por partido.
+            \item \texttt{[ ]} AC5: \texttt{formulas.py} libre de acceso a DB (funciones puras sobre DataFrame).
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario: cobertura completa de fórmulas y casos borde.
+            \item Unitario: validación de redondeo y formato de salida de DTOs.
+            \item Integración: use cases analíticos con datos semilla y comparación contra valores esperados.
+        \end{itemize}
     \end{itemize}
+\end{itemize}
 
+\textbf{Épica H2-E3 — Inteligencia Deportiva (Pandas Engine)}
+\begin{itemize}
     \item \textbf{US-203: Integración del Motor Estadístico}
     \begin{itemize}
         \item \textit{Objetivo funcional:} conectar vistas SQL con servicios analíticos sin acoplar fórmula y persistencia.
@@ -408,9 +481,24 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/infrastructure/analytics/pandas\_analytics\_service.py},
         \texttt{src/application/use\_cases/calcular\_estadisticas\_partido.py},
         \texttt{tests/integration/test\_analytics\_service.py}.
-        \item \textit{Criterios de aceptación técnicos:} lectura exclusiva desde vistas, columnas normalizadas y cobertura completa de fórmulas.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: servicio lee exclusivamente \texttt{v\_boxscore\_completo} y \texttt{v\_jugador\_totales\_temporada}.
+            \item \texttt{[ ]} AC2: contrato \texttt{AnalyticsService} desacoplado de detalles de infraestructura.
+            \item \texttt{[ ]} AC3: columnas estandarizadas y trazables para consumo de UI/reportería.
+            \item \texttt{[ ]} AC4: errores de lectura/cálculo retornan excepciones de dominio controladas.
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario con DataFrames en memoria y mocks de repositorio de lectura.
+            \item Integración end-to-end desde vistas SQL hacia DTO de métricas.
+            \item Pruebas de regresión de columnas esperadas en vistas consumidas.
+        \end{itemize}
     \end{itemize}
+\end{itemize}
 
+\textbf{Épica H2-E4 — Gobernanza de Esquema y Migraciones}
+\begin{itemize}
     \item \textbf{US-204 (Nueva): Versionado de Esquema y Migraciones}
     \begin{itemize}
         \item \textit{Objetivo funcional:} asegurar evolución de base sin pérdida de datos entre versiones.
@@ -419,35 +507,73 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{002\_*.sql},
         \texttt{src/infrastructure/persistence/migration\_runner.py},
         \texttt{tests/integration/test\_migrations.py}.
-        \item \textit{Criterios de aceptación técnicos:} tabla \texttt{schema\_version}, migraciones forward/backward y verificación en arranque.
-        \item \textit{Testing mínimo:} upgrade incremental y pruebas de no regresión de datos.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: tabla \texttt{schema\_version} creada y mantenida automáticamente.
+            \item \texttt{[ ]} AC2: runner ejecuta migraciones pendientes en orden y registra resultado.
+            \item \texttt{[ ]} AC3: soporte de rollback controlado para la última migración aplicada.
+            \item \texttt{[ ]} AC4: validación al arranque bloquea ejecución ante schema incompatible.
+            \item \texttt{[ ]} AC5: scripts versionados por release y trazabilidad en changelog técnico.
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Integración upgrade multi-versión sobre base de datos con datos reales.
+            \item Integración rollback y verificación de integridad posterior.
+            \item Integración no-regresión: dataset previo conserva cardinalidad y relaciones.
+        \end{itemize}
     \end{itemize}
 \end{itemize}
 
 \subsection{Hito 3: Visualización Pro y Reporting (v0.3)}
 \textbf{Objetivo del hito:} convertir estadísticas en tableros e informes consumibles para decisiones tácticas.
 
-\textbf{Épica E4 — Dashboards e Informes}
+\textbf{Épica H3-E1 — Dashboards e Informes}
 \begin{itemize}
     \item \textbf{US-301: Dashboards e Informes Interactivos}
     \begin{itemize}
+        \item \textit{Objetivo funcional:} exponer líderes y tendencias en CLI/GUI con filtros tácticos.
         \item \textit{Archivos a crear:}
         \texttt{src/application/use\_cases/obtener\_lideres\_temporada.py},
         \texttt{src/application/use\_cases/generar\_grafico\_rendimiento.py},
         \texttt{src/infrastructure/analytics/chart\_generator.py},
         \texttt{src/infrastructure/reports/cli\_leaderboard\_reporter.py}.
-        \item \textit{Criterios de aceptación técnicos:} top-5 por rubro con \texttt{rich}, generación de gráficos < 2s y filtros por temporada.
-        \item \textit{Testing mínimo:} ranking y tiempos de render sobre dataset semilla.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: top-5 por rubro (PTS/REB/AST/EFF) en formato tabular legible.
+            \item \texttt{[ ]} AC2: gráficos de tendencia por jugador/equipo con filtro por temporada y competencia.
+            \item \texttt{[ ]} AC3: generación de gráfico en tiempo objetivo (< 2s) para dataset semilla.
+            \item \texttt{[ ]} AC4: consistencia entre valores graficados y valores de vistas SQL.
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario: ordenamiento de líderes y reglas de desempate.
+            \item Unitario: transformación DataFrame a serie para gráficos.
+            \item Integración: reporter CLI + chart generator con datos de base semilla.
+        \end{itemize}
     \end{itemize}
 
     \item \textbf{US-302: Exportación Profesional a PDF}
     \begin{itemize}
+        \item \textit{Objetivo funcional:} emitir reporte formal de partido/temporada para análisis y difusión interna.
         \item \textit{Archivos a crear:}
         \texttt{src/application/use\_cases/exportar\_reporte.py},
         \texttt{src/application/dtos/reporte\_dto.py},
         \texttt{src/infrastructure/reports/pdf\_generator.py},
         \texttt{tests/integration/test\_pdf\_export.py}.
-        \item \textit{Criterios de aceptación técnicos:} cabecera profesional, tablas alineadas, convención de nombre y creación automática de \texttt{exports/}.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: encabezado con clubes, competencia, fecha y metadata del reporte.
+            \item \texttt{[ ]} AC2: tablas de boxscore y métricas avanzadas con alineación numérica.
+            \item \texttt{[ ]} AC3: convención de nombre \texttt{boxscore\_YYYY-MM-DD\_Local\_vs\_Visitante.pdf}.
+            \item \texttt{[ ]} AC4: creación automática de \texttt{exports/} si no existe.
+            \item \texttt{[ ]} AC5: manejo de errores de I/O con mensaje de recuperación.
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Integración: generación de PDF válido a partir de partido semilla.
+            \item Integración: validación de nombre de archivo y ruta de salida.
+            \item Integración: caso de error por ruta sin permisos.
+        \end{itemize}
     \end{itemize}
 
     \item \textbf{US-303 (Nueva): Scouting de Rival Pre-Partido}
@@ -458,38 +584,77 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/application/use\_cases/generar\_scouting\_rival.py},
         \texttt{src/application/dtos/scouting\_dto.py},
         \texttt{tests/integration/test\_scouting\_rival.py}.
-        \item \textit{Criterios de aceptación técnicos:} comparación últimos N partidos, detección de patrones y consistencia de filtros por competencia.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: comparación de últimos N partidos configurable por parámetro.
+            \item \texttt{[ ]} AC2: detección de patrones (rachas, tendencia de tiro, pérdidas recurrentes).
+            \item \texttt{[ ]} AC3: filtros por competencia/categoría con resultados consistentes.
+            \item \texttt{[ ]} AC4: reporte exportable/visible con conclusiones y datos fuente.
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario: agregaciones históricas y funciones de detección de patrones.
+            \item Integración: vistas de scouting con dataset histórico de ejemplo.
+            \item Integración: consistencia de filtros por competencia y ventana N.
+        \end{itemize}
     \end{itemize}
 \end{itemize}
 
 \subsection{Hito 4: Interfaz Multiplataforma y Entrega (v1.0)}
 \textbf{Objetivo del hito:} migrar a experiencia visual completa y cerrar hardening de release.
 
-\textbf{Épica E5 — Interfaz de Usuario Adaptable (GUI)}
+\textbf{Épica H4-E1 — Interfaz de Usuario Adaptable (GUI)}
 \begin{itemize}
     \item \textbf{US-401: Implementación de Interfaz Flet (Desktop/Mobile)}
     \begin{itemize}
+        \item \textit{Objetivo funcional:} ofrecer una interfaz visual completa reutilizando casos de uso ya consolidados.
         \item \textit{Archivos a crear:}
         \texttt{src/infrastructure/ui/flet/app.py},
         \texttt{src/infrastructure/ui/flet/screens/dashboard\_screen.py},
         \texttt{game\_entry\_screen.py},
         \texttt{player\_profile\_screen.py},
         \texttt{src/infrastructure/ui/flet/components/chart\_component.py}.
-        \item \textit{Criterios de aceptación técnicos:} arranque < 3s, modo oscuro/claro, diseño responsive y navegación estable.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: arranque inicial en menos de 3 segundos en entorno objetivo.
+            \item \texttt{[ ]} AC2: navegación estable entre pantallas principales sin pérdida de estado.
+            \item \texttt{[ ]} AC3: soporte tema claro/oscuro y diseño responsive desktop/mobile.
+            \item \texttt{[ ]} AC4: formularios con validación visual y mensajes de error entendibles.
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario: validadores de formularios y mapeo de estado de pantalla.
+            \item Integración UI: flujo navegación Dashboard $\rightarrow$ GameEntry $\rightarrow$ PlayerProfile.
+            \item Prueba manual guiada en al menos dos plataformas (desktop + mobile).
+        \end{itemize}
     \end{itemize}
 
     \item \textbf{US-402: Backup y Estabilización Final}
     \begin{itemize}
+        \item \textit{Objetivo funcional:} proteger continuidad operativa mediante respaldo/restauración y hardening final.
         \item \textit{Archivos a crear:}
         \texttt{src/application/use\_cases/exportar\_backup.py},
         \texttt{src/application/use\_cases/restaurar\_backup.py},
         \texttt{src/infrastructure/persistence/backup\_service.py},
         \texttt{tests/integration/test\_backup\_restore.py}.
-        \item \textit{Criterios de aceptación técnicos:} backup/restore validado, optimización de índices y cierre de defectos críticos pre-release.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: exportación de backup completa con metadata de versión y fecha.
+            \item \texttt{[ ]} AC2: restauración íntegra sobre instancia limpia y sobre instancia con datos.
+            \item \texttt{[ ]} AC3: verificación automática post-restore (conteo de tablas críticas y checksum lógico).
+            \item \texttt{[ ]} AC4: checklist de estabilización ejecutada (rendimiento, errores críticos, regresión).
+        \end{itemize}
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Integración: ciclo exportar-restaurar con comparación de datos clave.
+            \item Integración: restauración desde backup de versión anterior con migraciones aplicadas.
+            \item Regresión: ejecución de casos críticos tras restore (auth, carga partido, reportes).
+        \end{itemize}
     \end{itemize}
 
     \item \textbf{US-403 (Nueva): Seguridad de Datos Local}
     \begin{itemize}
+        \item \textit{Objetivo funcional:} endurecer credenciales, sesión y almacenamiento local de datos.
         \item \textit{Archivos a crear:}
         \texttt{src/infrastructure/security/credential\_policy.py},
         \texttt{src/infrastructure/security/compromised\_password\_store.py},
@@ -497,14 +662,61 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{tests/unit/test\_credential\_policy.py}.
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
-            \item AC1: credenciales de mínimo 12 caracteres y validación de fortaleza.
-            \item AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI.
-            \item AC3: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
-            \item AC4: cifrado opcional de base local con estrategia compatible SQLCipher.
-            \item AC5: política de sesión segura (expiración, revocación y limpieza idempotente).
+            \item \texttt{[ ]} AC1: credenciales de mínimo 12 caracteres y validación de fortaleza.
+            \item \texttt{[ ]} AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI.
+            \item \texttt{[ ]} AC3: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
+            \item \texttt{[ ]} AC4: cifrado opcional de base local con estrategia compatible SQLCipher.
+            \item \texttt{[ ]} AC5: política de sesión segura (expiración, revocación y limpieza idempotente).
+            \item \texttt{[ ]} AC6: trazabilidad de eventos de seguridad sin exponer datos sensibles.
         \end{itemize}
-        \item \textit{Testing mínimo:} pruebas de seguridad en credenciales, sesión y archivos locales.
+        \item \textit{Testing mínimo:}
+        \begin{itemize}
+            \item Unitario: política de contraseñas y bloqueo por comprometidas.
+            \item Unitario: ciclo hash/verificación y migración de hashes legados.
+            \item Integración: expiración/revocación de sesión y limpieza de credenciales en logout.
+            \item Integración: acceso a DB cifrada/no cifrada según configuración.
+        \end{itemize}
     \end{itemize}
+\end{itemize}
+
+\section{Reglas de Negocio Consolidadas}
+\textbf{Objetivo:} centralizar reglas obligatorias del dominio para que el desarrollo y testing sean consistentes en todas las historias de usuario.
+
+\textbf{Identidad y seguridad}
+\begin{itemize}
+    \item Email de usuario único por sistema.
+    \item Contraseña nunca persistida en texto plano ni en logs.
+    \item Sesión requiere usuario autenticado y, para comandos operativos, club activo.
+\end{itemize}
+
+\textbf{Jugadores, clubes y afiliaciones}
+\begin{itemize}
+    \item DNI de jugador único cuando está informado.
+    \item Un jugador no puede tener dos vínculos activos superpuestos con el mismo club.
+    \item Historial de afiliación debe respetar coherencia temporal (\texttt{fecha\_hasta >= fecha\_desde}).
+\end{itemize}
+
+\textbf{Competencias, inscripciones y listas}
+\begin{itemize}
+    \item Una inscripción es única por club + competencia + categoría + temporada.
+    \item Cada inscripción tiene una única lista de buena fe asociada.
+    \item Solo jugadores habilitados en lista pueden figurar en carga oficial de partido.
+\end{itemize}
+
+\textbf{Partidos y estadísticas}
+\begin{itemize}
+    \item Un partido no puede tener el mismo club como local y visitante.
+    \item Toda carga de partido y boxscore es atómica (todo o nada).
+    \item En estadísticas de tiro: convertidos $\leq$ lanzados y todos los valores son no negativos.
+    \item Los puntos por jugador deben ser consistentes con T1C, T2C y T3C.
+    \item Minutos por jugador no pueden exceder el máximo reglamentario definido por competencia.
+\end{itemize}
+
+\textbf{Analítica y reporting}
+\begin{itemize}
+    \item Fórmulas avanzadas deben manejar división por cero y no devolver \texttt{NaN}/\texttt{inf}.
+    \item Reportes y dashboards se construyen sobre vistas SQL normalizadas y versionadas.
+    \item Toda exportación (PDF/backup) debe ser trazable en logs con timestamp y resultado.
 \end{itemize}
 
 \section{Requisitos No Funcionales (NFR)}
