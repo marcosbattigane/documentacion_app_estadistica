@@ -277,7 +277,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \end{itemize}
     \item \textbf{US-107 (Nueva): Monitoreo y trazabilidad operativa}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} logging estructurado por comando/caso de uso con niveles DEBUG/INFO/WARN/ERROR y correlación por ejecución usando \texttt{correlation\_id} UUIDv4 generado al inicio del comando y propagado a casos de uso/repositorios.
+        \item \textit{Criterios de aceptación:} logging estructurado por comando/caso de uso con niveles DEBUG/INFO/WARNING/ERROR y correlación por ejecución usando \texttt{correlation\_id} UUIDv4 generado al inicio del comando y propagado a casos de uso/repositorios.
         \item \textit{Criterio de seguridad:} sanitización/redacción obligatoria de datos sensibles antes de escribir logs.
         \item \textit{Testing requerido:} tests automáticos de no exposición de secretos (contraseñas, tokens, IDs de sesión) y presencia de eventos clave (auth, importación, persistencia).
         \item \textit{Cuestiones a desarrollar:} módulo de logging central y política de retención local de logs.
@@ -353,7 +353,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \end{itemize}
     \item \textbf{US-403 (Nueva): Seguridad de datos local}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} fortalecimiento de credenciales (mínimo 12 caracteres, sin reglas rígidas de composición, bloqueo de contraseñas comprometidas mediante lista local versionada de hashes de contraseñas filtradas; hash robusto tipo bcrypt/Argon2; salt por usuario), cifrado opcional de DB y política de sesión segura.
+        \item \textit{Criterios de aceptación:} fortalecimiento de credenciales (mínimo 12 caracteres, sin reglas rígidas de composición, bloqueo de contraseñas comprometidas mediante lista local versionada de hashes de filtraciones públicas con actualización mensual y validación automática en CI; hash robusto tipo bcrypt/Argon2; salt por usuario), cifrado opcional de DB y política de sesión segura.
         \item \textit{Testing requerido:} pruebas de amenazas básicas (credenciales, sesión, archivos locales).
         \item \textit{Cuestiones a desarrollar:} plan de migración a hashing robusto y soporte SQLCipher opcional.
     \end{itemize}
@@ -376,7 +376,9 @@ NFR-4 & Usabilidad & Carga de un partido completo en < 3 clics (desde la selecci
 Una historia de usuario se considera \textbf{Hecha} cuando:
 \begin{enumerate}
     \item El código está integrado en la rama principal sin conflictos.
-    \item Pasa pruebas unitarias e integración con dos umbrales: cobertura > 80\% en componentes no críticos y > 95\% en componentes críticos, incluyendo pero no limitado a autenticación, persistencia transaccional, rollback y fórmulas estadísticas; la clasificación crítica/no crítica se define y versiona en el catálogo técnico del backlog.
+    \item Pasa pruebas unitarias e integración con cobertura > 80\% en componentes no críticos.
+    \item Los componentes críticos alcanzan cobertura > 95\% (incluyendo pero no limitado a autenticación, persistencia transaccional, rollback y fórmulas estadísticas).
+    \item La clasificación crítica/no crítica se define y versiona en el catálogo técnico del backlog.
     \item Se respeta la arquitectura de capas (sin imports cruzados entre \texttt{domain} y \texttt{infrastructure}).
     \item Si hay cambios SQL, la vista/tabla está versionada y cubierta por test de integración con datos semilla.
     \item Si la US persiste múltiples tablas, existe evidencia de transacción atómica y rollback probado.
@@ -387,6 +389,8 @@ Una historia de usuario se considera \textbf{Hecha} cuando:
 
 \subsection{Catálogo técnico de criticidad}
 El catálogo de criticidad es un artefacto vivo del backlog de arquitectura donde se lista cada módulo, su nivel de criticidad (crítico/no crítico), justificación, dueño técnico y evidencia de cobertura objetivo. Su mantenimiento se realiza en cada refinamiento de hito y es prerrequisito para validar el DoD.
+
+\textbf{Formato y ubicación:} archivo versionado \texttt{ADR/catalogo-criticidad.md} con tabla mínima: \texttt{Modulo | Criticidad | Justificacion | Owner | Cobertura objetivo | Evidencia}. El catálogo se inicializa en Hito 1 y se actualiza en cada planificación de sprint.
 
 \section{Hoja de Ruta y Futuras Expansiones}
 Para transformar StatsPro Basketball en una plataforma líder de inteligencia deportiva, se proponen las siguientes fases de expansión post-v1.0:
