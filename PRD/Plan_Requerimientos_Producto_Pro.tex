@@ -231,6 +231,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
 \end{longtable}
 
 \section{Gestión de Tareas y Plan de Entregas (Consolidado)}
+\textit{Nota operativa:} los checklist de criterios de aceptación en este PRD son plantillas para crear issues/tareas. El estado real (\texttt{[ ]}/\texttt{[x]}) se gestiona en el tablero de trabajo y no en este archivo versionado.
 
 \subsection{Hito 1: Núcleo de Datos e Interfaz CLI (v0.1)}
 \textbf{Objetivo del hito:} construir una base técnica funcional por CLI, con persistencia robusta, autenticación local, casos de uso operativos y validaciones de integridad.
@@ -284,10 +285,10 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{sqlite\_game\_repository.py}.
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
-            \item AC1: \texttt{connect()} activa FKs y \texttt{row\_factory=sqlite3.Row}.
-            \item AC2: los repositorios retornan dataclasses, no tuplas SQL.
-            \item AC3: la capa \texttt{domain} no importa \texttt{sqlite3/pandas}.
-            \item AC4: guardado de partido + boxscore con transacción atómica.
+            \item \texttt{[ ]} AC1: \texttt{connect()} activa FKs y \texttt{row\_factory=sqlite3.Row}.
+            \item \texttt{[ ]} AC2: los repositorios retornan dataclasses, no tuplas SQL.
+            \item \texttt{[ ]} AC3: la capa \texttt{domain} no importa \texttt{sqlite3/pandas}.
+            \item \texttt{[ ]} AC4: guardado de partido + boxscore con transacción atómica.
         \end{itemize}
         \item \textit{Testing mínimo:} \texttt{tests/integration/test\_repositories.py} con CRUD, búsquedas, mapeos y atomicidad.
     \end{itemize}
@@ -387,10 +388,15 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \end{itemize}
         \item \textit{Modos de operación de logging:}
         \begin{itemize}
-            \item \textbf{Modo A (local-file):} logs en \texttt{./logs/statspro.log} con rotación local.
-            \item \textbf{Modo B (SEQ):} levantar SEQ con \texttt{docker-compose.yml}, enviar logs estructurados al endpoint HTTP de SEQ y analizar trazas en UI web.
+            \item \textbf{Modo local-file:} logs en \texttt{./logs/statspro.log} con rotación local.
+            \item \textbf{Modo SEQ:} levantar SEQ con \texttt{docker-compose.yml}, enviar logs estructurados al endpoint HTTP de SEQ y analizar trazas en UI web.
         \end{itemize}
-        \item \textit{Rol de \texttt{execution\_context.py}:} define el contexto de ejecución por request/comando (\texttt{correlation\_id}, usuario, club activo, nombre de comando, timestamp de inicio, ambiente). Este contexto se crea al comienzo del comando, se propaga a casos de uso/repositorios y serializa metadata homogénea para todos los logs.
+        \item \textit{Rol de \texttt{execution\_context.py}:}
+        \begin{itemize}
+            \item crea el contexto inicial por comando (\texttt{correlation\_id}, usuario, club activo, comando, timestamp, ambiente);
+            \item propaga ese contexto hacia casos de uso, servicios y repositorios;
+            \item serializa metadata homogénea para enriquecer todos los eventos de log.
+        \end{itemize}
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
             \item \texttt{[ ]} AC1: niveles DEBUG/INFO/WARNING/ERROR en formato estructurado JSON.
@@ -661,11 +667,12 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/infrastructure/security/credential\_policy.py},
         \texttt{src/infrastructure/security/compromised\_password\_store.py},
         \texttt{src/infrastructure/security/db\_encryption\_adapter.py},
+        \texttt{docs/security/password\_compromised\_update\_procedure.md},
         \texttt{tests/unit/test\_credential\_policy.py}.
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
             \item \texttt{[ ]} AC1: credenciales de mínimo 12 caracteres y validación de fortaleza.
-            \item \texttt{[ ]} AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI según procedimiento de seguridad versionado del repositorio.
+            \item \texttt{[ ]} AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI según \texttt{docs/security/password\_compromised\_update\_procedure.md}.
             \item \texttt{[ ]} AC3: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
             \item \texttt{[ ]} AC4: cifrado opcional de base local con estrategia compatible SQLCipher.
             \item \texttt{[ ]} AC5: política de sesión segura (expiración, revocación y limpieza idempotente).
@@ -752,7 +759,7 @@ Una historia de usuario se considera \textbf{Hecha} cuando:
 \subsection{Catálogo técnico de criticidad}
 El catálogo de criticidad es un artefacto vivo del backlog de arquitectura donde se lista cada módulo, su nivel de criticidad (crítico/no crítico), justificación, dueño técnico y evidencia de cobertura objetivo. Su mantenimiento se realiza en cada refinamiento de hito y es prerrequisito para validar el DoD.
 
-\textbf{Formato y ubicación:} archivo versionado \texttt{ADR/catalogo-criticidad.md} con tabla mínima: \texttt{Módulo | Criticidad | Justificación | Owner | Cobertura objetivo | Evidencia}. El catálogo se inicializa en Hito 1 y se actualiza en cada planificación de sprint.
+\textbf{Formato y ubicación:} archivo versionado \texttt{docs/catalogo-criticidad.md} con tabla mínima: \texttt{Módulo | Criticidad | Justificación | Owner | Cobertura objetivo | Evidencia}. El catálogo se inicializa en Hito 1 y se actualiza en cada planificación de sprint.
 \textbf{Criterios de clasificación:} un módulo se marca como crítico si cumple al menos uno de estos puntos: (1) controla acceso/autenticación/autorización; (2) persiste datos en múltiples tablas con transacciones; (3) impacta integridad histórica del dato deportivo; (4) implementa cálculos estadísticos oficiales usados en decisiones tácticas.
 \textbf{Gobernanza:} owner primario Arquitecto Técnico; co-owner QA Lead. Revisión obligatoria en kickoff de hito y en cada planificación de sprint.
 
