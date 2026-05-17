@@ -353,7 +353,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \end{itemize}
     \item \textbf{US-403 (Nueva): Seguridad de datos local}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} fortalecimiento de credenciales (mínimo 12 caracteres, sin reglas rígidas de composición, bloqueo de contraseñas comprometidas mediante lista local versionada de hashes de filtraciones públicas con actualización mensual y validación automática en CI; hash robusto tipo bcrypt/Argon2; salt por usuario), cifrado opcional de DB y política de sesión segura.
+        \item \textit{Criterios de aceptación:} AC1) credenciales con mínimo 12 caracteres sin reglas rígidas de composición; AC2) bloqueo de contraseñas comprometidas con lista local versionada y actualización mensual; AC3) hash robusto bcrypt/Argon2 con salt por usuario; AC4) cifrado opcional de DB; AC5) política de sesión segura.
         \item \textit{Testing requerido:} pruebas de amenazas básicas (credenciales, sesión, archivos locales).
         \item \textit{Cuestiones a desarrollar:} plan de migración a hashing robusto y soporte SQLCipher opcional.
     \end{itemize}
@@ -390,7 +390,7 @@ Una historia de usuario se considera \textbf{Hecha} cuando:
 \subsection{Catálogo técnico de criticidad}
 El catálogo de criticidad es un artefacto vivo del backlog de arquitectura donde se lista cada módulo, su nivel de criticidad (crítico/no crítico), justificación, dueño técnico y evidencia de cobertura objetivo. Su mantenimiento se realiza en cada refinamiento de hito y es prerrequisito para validar el DoD.
 
-\textbf{Formato y ubicación:} archivo versionado \texttt{ADR/catalogo-criticidad.md} con tabla mínima: \texttt{Modulo | Criticidad | Justificacion | Owner | Cobertura objetivo | Evidencia}. El catálogo se inicializa en Hito 1 y se actualiza en cada planificación de sprint.
+\textbf{Formato y ubicación:} archivo versionado \texttt{ADR/catalogo-criticidad.md} con tabla mínima: \texttt{Modulo | Criticidad | Justificación | Owner | Cobertura objetivo | Evidencia}. El catálogo se inicializa en Hito 1 y se actualiza en cada planificación de sprint.
 
 \section{Hoja de Ruta y Futuras Expansiones}
 Para transformar StatsPro Basketball en una plataforma líder de inteligencia deportiva, se proponen las siguientes fases de expansión post-v1.0:
