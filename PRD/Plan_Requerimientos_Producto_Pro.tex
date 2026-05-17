@@ -251,11 +251,13 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \end{itemize}
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
-            \item \texttt{[ ]} AC1: schema idempotente con \texttt{CREATE TABLE IF NOT EXISTS}, FKs activas, \texttt{ON DELETE/UPDATE CASCADE} y \texttt{CHECK} de métricas.
-            \item \texttt{[ ]} AC2: vistas operativas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
-            \item \texttt{[ ]} AC3: todas las divisiones de vistas protegidas con \texttt{NULLIF}/\texttt{CASE}.
-            \item \texttt{[ ]} AC4: datos semilla suficientes para probar consultas, listados y cálculos.
-            \item \texttt{[ ]} AC5: definición de columnas estable (nombres y tipos) para consumo desde Pandas sin transformaciones ambiguas.
+            \item \texttt{[ ]} AC1: schema idempotente con \texttt{CREATE TABLE IF NOT EXISTS}.
+            \item \texttt{[ ]} AC2: FKs activas y reglas \texttt{ON DELETE/UPDATE CASCADE} definidas en relaciones críticas.
+            \item \texttt{[ ]} AC3: \texttt{CHECK constraints} aplicadas en métricas y campos de integridad.
+            \item \texttt{[ ]} AC4: vistas operativas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
+            \item \texttt{[ ]} AC5: todas las divisiones de vistas protegidas con \texttt{NULLIF}/\texttt{CASE}.
+            \item \texttt{[ ]} AC6: datos semilla suficientes para probar consultas, listados y cálculos.
+            \item \texttt{[ ]} AC7: definición de columnas estable (nombres y tipos) para consumo desde Pandas sin transformaciones ambiguas.
         \end{itemize}
         \item \textit{Reglas de negocio DB:} \texttt{idClubLocal != idClubVisitante}, coherencia \texttt{fechaHasta >= fechaDesde}, unicidad en \texttt{listaBuenaFe.idInscripcion}.
         \item \textit{Testing mínimo:}
@@ -663,7 +665,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
             \item \texttt{[ ]} AC1: credenciales de mínimo 12 caracteres y validación de fortaleza.
-            \item \texttt{[ ]} AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI.
+            \item \texttt{[ ]} AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI según procedimiento de seguridad versionado del repositorio.
             \item \texttt{[ ]} AC3: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
             \item \texttt{[ ]} AC4: cifrado opcional de base local con estrategia compatible SQLCipher.
             \item \texttt{[ ]} AC5: política de sesión segura (expiración, revocación y limpieza idempotente).
@@ -752,6 +754,7 @@ El catálogo de criticidad es un artefacto vivo del backlog de arquitectura dond
 
 \textbf{Formato y ubicación:} archivo versionado \texttt{ADR/catalogo-criticidad.md} con tabla mínima: \texttt{Módulo | Criticidad | Justificación | Owner | Cobertura objetivo | Evidencia}. El catálogo se inicializa en Hito 1 y se actualiza en cada planificación de sprint.
 \textbf{Criterios de clasificación:} un módulo se marca como crítico si cumple al menos uno de estos puntos: (1) controla acceso/autenticación/autorización; (2) persiste datos en múltiples tablas con transacciones; (3) impacta integridad histórica del dato deportivo; (4) implementa cálculos estadísticos oficiales usados en decisiones tácticas.
+\textbf{Gobernanza:} owner primario Arquitecto Técnico; co-owner QA Lead. Revisión obligatoria en kickoff de hito y en cada planificación de sprint.
 
 \section{Hoja de Ruta y Futuras Expansiones}
 Para transformar StatsPro Basketball en una plataforma líder de inteligencia deportiva, se proponen las siguientes fases de expansión post-v1.0:
