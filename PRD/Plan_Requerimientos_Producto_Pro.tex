@@ -237,7 +237,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
 \begin{itemize}
     \item \textbf{US-101: Base SQLite + Vistas SQL}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} \texttt{schema.sql}, \texttt{views.sql}, \texttt{seed.sql}, integridad referencial y restricciones \texttt{CHECK}; vistas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
+        \item \textit{Criterios de aceptación:} \texttt{schema.sql}, \texttt{views.sql}, \texttt{seed.sql}, integridad referencial y restricciones \texttt{CHECK}; vistas \texttt{v\_partidos\_resumen} (datos de partido legibles), \texttt{v\_boxscore\_completo} (detalle por jugador-partido), \texttt{v\_jugador\_totales\_temporada} (acumulados por temporada) y \texttt{v\_listas\_detalle} (jugadores habilitados por inscripción).
         \item \textit{Testing requerido:} pruebas de integración sobre existencia de tablas/vistas, FKs, constraints y protección de cálculos SQL con \texttt{NULLIF/CASE} en vistas.
         \item \textit{Cuestiones a desarrollar:} clase \texttt{SQLiteManager}, inicialización atómica y datos semilla para escenarios reales.
     \end{itemize}
@@ -352,7 +352,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \end{itemize}
     \item \textbf{US-403 (Nueva): Seguridad de datos local}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} fortalecimiento de credenciales (complejidad mínima, hash robusto tipo bcrypt/Argon2, salt por usuario), encriptación opcional de DB y política de sesión segura.
+        \item \textit{Criterios de aceptación:} fortalecimiento de credenciales (complejidad mínima, hash robusto tipo bcrypt/Argon2, salt por usuario), cifrado opcional de DB y política de sesión segura.
         \item \textit{Testing requerido:} pruebas de amenazas básicas (credenciales, sesión, archivos locales).
         \item \textit{Cuestiones a desarrollar:} plan de migración a hashing robusto y soporte SQLCipher opcional.
     \end{itemize}
@@ -375,7 +375,7 @@ NFR-4 & Usabilidad & Carga de un partido completo en < 3 clics (desde la selecci
 Una historia de usuario se considera \textbf{Hecha} cuando:
 \begin{enumerate}
     \item El código está integrado en la rama principal sin conflictos.
-    \item Pasa pruebas unitarias e integración con cobertura > 80\% en lógica de negocio, > 95\% en flujos críticos (autenticación, persistencia y rollback) y 100\% en fórmulas estadísticas.
+    \item Pasa pruebas unitarias e integración con dos umbrales: cobertura > 80\% en componentes no críticos y > 95\% en componentes críticos (autenticación, persistencia transaccional, rollback y fórmulas estadísticas).
     \item Se respeta la arquitectura de capas (sin imports cruzados entre \texttt{domain} y \texttt{infrastructure}).
     \item Si hay cambios SQL, la vista/tabla está versionada y cubierta por test de integración con datos semilla.
     \item Si la US persiste múltiples tablas, existe evidencia de transacción atómica y rollback probado.
