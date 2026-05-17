@@ -238,7 +238,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \item \textbf{US-101: Base SQLite + Vistas SQL}
     \begin{itemize}
         \item \textit{Criterios de aceptación:} \texttt{schema.sql}, \texttt{views.sql}, \texttt{seed.sql}, integridad referencial y restricciones \texttt{CHECK}; vistas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
-        \item \textit{Testing requerido:} pruebas de integración sobre existencia de tablas/vistas, FKs, constraints y división por cero.
+        \item \textit{Testing requerido:} pruebas de integración sobre existencia de tablas/vistas, FKs, constraints y protección de cálculos SQL con \texttt{NULLIF/CASE} en vistas.
         \item \textit{Cuestiones a desarrollar:} clase \texttt{SQLiteManager}, inicialización atómica y datos semilla para escenarios reales.
     \end{itemize}
     \item \textbf{US-102: DatabaseManager + Repositories}
@@ -275,10 +275,10 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \item \textit{Testing requerido:} pruebas de flujo de sesión y cobertura de comandos críticos.
         \item \textit{Cuestiones a desarrollar:} \texttt{main\_cli.py}, registro modular de comandos y formateadores.
     \end{itemize}
-    \item \textbf{US-107 (Nueva): Observabilidad y trazabilidad operativa}
+    \item \textbf{US-107 (Nueva): Monitoreo y trazabilidad operativa}
     \begin{itemize}
         \item \textit{Criterios de aceptación:} logging estructurado por comando/caso de uso con niveles INFO/WARN/ERROR y correlación por ejecución.
-        \item \textit{Testing requerido:} tests de no-filtrado de secretos y presencia de eventos clave (auth, importación, persistencia).
+        \item \textit{Testing requerido:} tests automáticos de no exposición de secretos (contraseñas, tokens, IDs de sesión) y presencia de eventos clave (auth, importación, persistencia).
         \item \textit{Cuestiones a desarrollar:} módulo de logging central y política de retención local de logs.
     \end{itemize}
 \end{itemize}
@@ -352,7 +352,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \end{itemize}
     \item \textbf{US-403 (Nueva): Seguridad de datos local}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} hardening de credenciales, encriptación opcional de DB y política de sesión segura.
+        \item \textit{Criterios de aceptación:} fortalecimiento de credenciales (complejidad mínima, hash robusto tipo bcrypt/Argon2, salt por usuario), encriptación opcional de DB y política de sesión segura.
         \item \textit{Testing requerido:} pruebas de amenazas básicas (credenciales, sesión, archivos locales).
         \item \textit{Cuestiones a desarrollar:} plan de migración a hashing robusto y soporte SQLCipher opcional.
     \end{itemize}
@@ -375,7 +375,7 @@ NFR-4 & Usabilidad & Carga de un partido completo en < 3 clics (desde la selecci
 Una historia de usuario se considera \textbf{Hecha} cuando:
 \begin{enumerate}
     \item El código está integrado en la rama principal sin conflictos.
-    \item Pasa pruebas unitarias e integración con cobertura > 80\% en lógica de negocio y 100\% en fórmulas estadísticas.
+    \item Pasa pruebas unitarias e integración con cobertura > 80\% en lógica de negocio, > 95\% en flujos críticos (autenticación, persistencia y rollback) y 100\% en fórmulas estadísticas.
     \item Se respeta la arquitectura de capas (sin imports cruzados entre \texttt{domain} y \texttt{infrastructure}).
     \item Si hay cambios SQL, la vista/tabla está versionada y cubierta por test de integración con datos semilla.
     \item Si la US persiste múltiples tablas, existe evidencia de transacción atómica y rollback probado.
