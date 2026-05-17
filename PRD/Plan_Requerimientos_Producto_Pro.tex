@@ -180,150 +180,183 @@ El sistema utiliza una base de datos relacional local (\textbf{SQLite}) con el s
     \item \textbf{Métricas:} La tabla \texttt{jugadorPartido} actúa como el hecho (fact table) para el motor de análisis.
 \end{itemize}
 
-\section{Registro de Decisiones Arquitectónicas (ADR)}
-Siguiendo el estándar EOP, se deben documentar las siguientes decisiones críticas:
+\section{Arquitectura de Software (Clean + Hexagonal)}
+Para cumplir portabilidad, testabilidad y ejecución local-first, el sistema adopta una Arquitectura Limpia con enfoque Hexagonal.
 
-\begin{longtable}{llp{1.5cm}p{7cm}}
+\subsection{Capas y Responsabilidades}
+\begin{itemize}
+    \item \textbf{Dominio (\texttt{src/domain}):} Entidades puras, reglas de negocio, excepciones e interfaces (ports) sin dependencias externas.
+    \item \textbf{Aplicación (\texttt{src/application}):} Casos de uso y DTOs; orquesta reglas usando inyección de dependencias.
+    \item \textbf{Infraestructura (\texttt{src/infrastructure}):} Repositorios SQLite, parser Excel (Pandas), UI CLI/GUI y generación de reportes.
+\end{itemize}
+
+\subsection{Regla de Dependencias}
+\begin{itemize}
+    \item \texttt{domain <- application <- infrastructure}
+    \item \texttt{domain} no puede importar \texttt{application} ni \texttt{infrastructure}.
+    \item \texttt{application} puede importar \texttt{domain}, pero no \texttt{infrastructure}.
+\end{itemize}
+
+\subsection{Patrones de Diseño}
+\begin{itemize}
+    \item \textbf{Repository Pattern:} Abstracción de persistencia por agregado (\texttt{UserRepository}, \texttt{PlayerRepository}, etc.).
+    \item \textbf{Dependency Injection:} Los casos de uso reciben puertos, no implementaciones concretas.
+    \item \textbf{Command Pattern:} CLI extensible por subcomandos sin bloques monolíticos \texttt{if/else}.
+\end{itemize}
+
+\subsection{Estructura Objetivo de Directorios}
+\begin{itemize}
+    \item \texttt{src/domain/entities, interfaces, exceptions}
+    \item \texttt{src/application/use\_cases, dtos, services}
+    \item \texttt{src/infrastructure/persistence, analytics, ingest, reports, ui}
+    \item \texttt{tests/unit, tests/integration}
+\end{itemize}
+
+\section{Registro de Decisiones Arquitectónicas (ADR)}
+Las siguientes decisiones son bloqueantes para hitos sucesivos:
+
+\begin{longtable}{llp{1.5cm}p{5cm}p{2cm}}
 \toprule
-\rowcolor{headergray} \textbf{ID} & \textbf{Título} & \textbf{Estado} & \textbf{Decisión a Tomar} \\
+\rowcolor{headergray} \textbf{ID} & \textbf{Título} & \textbf{Estado} & \textbf{Decisión} & \textbf{Bloquea} \\
 \midrule
-ADR-001 & Arquitectura Local-First & Pendiente & Definir el uso de SQLite y el enfoque offline-first para asegurar operatividad total sin conexión a internet. \\
-ADR-002 & Framework UI & Pendiente & Evaluar y seleccionar entre Java/Compose Multiplatform o Python/Flet para el desarrollo multiplataforma. \\
-ADR-003 & Protocolo de Ingesta & Pendiente & Establecer el flujo de limpieza y transformación de datos desde planillas Excel de Ges Deportivo usando Pandas. \\
-ADR-004 & Versionado de DB & Pendiente & Determinar la estrategia y herramientas para el manejo de migraciones de esquema en la base de datos local. \\
-ADR-005 & Reportes PDF & Pendiente & Seleccionar la librería óptima para la generación de informes estadísticos PDF en entornos locales y móviles. \\
-ADR-006 & Seguridad y Cifrado & Pendiente & Definir algoritmos de hashing para contraseñas locales y posible cifrado de la base de datos (SQLCipher). \\
-ADR-007 & Motor de Visualización & Pendiente & Seleccionar biblioteca de gráficos (ej. MPAndroidChart, Skia o Plotly) para los dashboards interactivos. \\
-ADR-008 & Estrategia de Backup & Pendiente & Definir el mecanismo de exportación y restauración de la base de datos para prevenir pérdida de información. \\
+ADR-001 & Arquitectura Local-First & Aprobado & SQLite + operación offline-first. & Hito 1 \\
+ADR-002 & Framework UI & Pendiente & Selección entre Flet y Compose Multiplatform. & Hito 2 \\
+ADR-003 & Protocolo de Ingesta & Pendiente & Estandarizar mapeo y limpieza de Excel Ges Deportivo. & US-201 \\
+ADR-004 & Versionado de DB & Pendiente & Definir migraciones (\texttt{schema\_version} o herramienta dedicada). & Hito 2 \\
+ADR-005 & Reportes PDF & Pendiente & Seleccionar librería PDF local (ej. ReportLab). & US-302 \\
+ADR-006 & Seguridad y Cifrado & Pendiente & Hash de contraseñas y eventual cifrado de DB (SQLCipher). & Hito 4 \\
+ADR-007 & Motor de Visualización & Pendiente & Selección de librería de gráficos para dashboards. & US-301 \\
+ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base local y versiones. & Hito 4 \\
 \bottomrule
 \end{longtable}
 
-\section{Gestión de Tareas y Plan de Entregas}
+\section{Gestión de Tareas y Plan de Entregas (Consolidado)}
 
 \subsection{Hito 1: Núcleo de Datos e Interfaz CLI (v0.1)}
-\textbf{Epic E1: Persistencia Robusta}
+\textbf{Épica E1 — Infraestructura y Persistencia}
 \begin{itemize}
-    \item \textbf{US-101: Implementación de la Base de Datos SQLite}
+    \item \textbf{US-101: Base SQLite + Vistas SQL}
     \begin{itemize}
-        \item \textit{Story:} Como desarrollador, quiero crear el esquema relacional completo para asegurar la integridad de los datos deportivos.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Script DDL completo con integridad referencial (FKs) y tipos de datos validados.
-            \item AC2: Implementación de vistas SQL para consultas complejas de estadísticas (ej. promedios por temporada).
-            \item AC3: Documentación técnica del esquema integrada en el repositorio.
-            \item AC4: Script de inicialización con datos semilla para validación de desarrollo.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} \texttt{schema.sql}, \texttt{views.sql}, \texttt{seed.sql}, integridad referencial y restricciones \texttt{CHECK}; vistas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
+        \item \textit{Testing requerido:} pruebas de integración sobre existencia de tablas/vistas, FKs, constraints y división por cero.
+        \item \textit{Cuestiones a desarrollar:} clase \texttt{SQLiteManager}, inicialización atómica y datos semilla para escenarios reales.
+    \end{itemize}
+    \item \textbf{US-102: DatabaseManager + Repositories}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} puertos en dominio y repositorios concretos tipados por agregado, mapeo a dataclasses, transacciones multi-tabla.
+        \item \textit{Testing requerido:} CRUD de integración en \texttt{:memory:} y validación de atomicidad en guardado de partido+boxscore.
+        \item \textit{Cuestiones a desarrollar:} \texttt{SQLiteUserRepository}, \texttt{SQLiteClubRepository}, \texttt{SQLitePlayerRepository}, \texttt{SQLiteGameRepository}.
     \end{itemize}
 \end{itemize}
 
-\textbf{Epic E2: Control por Línea de Comandos (CLI)}
+\textbf{Épica E2 — Lógica de Aplicación y CLI}
 \begin{itemize}
-    \item \textbf{US-102: Gestión de Entidades vía CLI}
+    \item \textbf{US-103: Casos de uso administrativos}
     \begin{itemize}
-        \item \textit{Story:} Como administrador, quiero gestionar jugadores, clubes y competencias mediante comandos para agilizar la carga inicial.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Implementación de operaciones CRUD para Jugadores, Clubes y Competencias.
-            \item AC2: Validación de tipos de datos en la entrada (ej. formato de fechas, DNI numérico).
-            \item AC3: Visualización de datos en tablas de consola legibles y formateadas.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} alta de jugadores/clubes/competencias, vinculación de jugador a club e inscripciones con validaciones fail-fast.
+        \item \textit{Testing requerido:} unit tests de entidades y use cases con mocks + integración en SQLite.
+        \item \textit{Cuestiones a desarrollar:} DTOs de frontera, validaciones de dominio y comandos CLI administrativos.
     \end{itemize}
-    \item \textbf{US-103: Autenticación Local y Perfiles}
+    \item \textbf{US-104: Autenticación y sesión local}
     \begin{itemize}
-        \item \textit{Story:} Como usuario, quiero un sistema de acceso local para proteger mi base de datos de análisis.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Creación de usuario local con almacenamiento seguro de credenciales (Hashing).
-            \item AC2: Selección de Club activo para la sesión de trabajo actual.
-            \item AC3: Persistencia del estado de la sesión entre ejecuciones de la CLI.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} hash+salt de credenciales, login local, persistencia de sesión y club activo.
+        \item \textit{Testing requerido:} unit tests de \texttt{PasswordHasher} y flujo registro/login/sesión.
+        \item \textit{Cuestiones a desarrollar:} \texttt{SessionManager}, comandos \texttt{stats auth}, control de acceso en comandos protegidos.
+    \end{itemize}
+    \item \textbf{US-105: Carga de partido atómica}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} rollback total ante error parcial; validación pre-persistencia de puntos, tiros y minutos.
+        \item \textit{Testing requerido:} pruebas de rollback y mensajes de error por jugador/campo inválido.
+        \item \textit{Cuestiones a desarrollar:} \texttt{CargarPartidoUseCase} + comando \texttt{stats game add} guiado.
+    \end{itemize}
+    \item \textbf{US-106: CLI por Command Pattern}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} subcomandos desacoplados, salida tabulada y uso de vistas SQL en listados.
+        \item \textit{Testing requerido:} pruebas de flujo de sesión y cobertura de comandos críticos.
+        \item \textit{Cuestiones a desarrollar:} \texttt{main\_cli.py}, registro modular de comandos y formateadores.
+    \end{itemize}
+    \item \textbf{US-107 (Nueva): Observabilidad y trazabilidad operativa}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} logging estructurado por comando/caso de uso con niveles INFO/WARN/ERROR y correlación por ejecución.
+        \item \textit{Testing requerido:} tests de no-filtrado de secretos y presencia de eventos clave (auth, importación, persistencia).
+        \item \textit{Cuestiones a desarrollar:} módulo de logging central y política de retención local de logs.
     \end{itemize}
 \end{itemize}
 
-\subsection{Hito 2: Interfaz de Gestión y Estructura Base (v0.2)}
-\textbf{Epic E3: Gestión Administrativa Visual}
+\subsection{Hito 2: Ingesta y Analítica Pro (v0.2)}
+\textbf{Épica E3 — Integración Ges Deportivo}
 \begin{itemize}
-    \item \textbf{US-201: CRUD Visual de Entidades Maestras}
+    \item \textbf{US-201: Parseo de Excel con Pandas}
     \begin{itemize}
-        \item \textit{Story:} Como administrativo, quiero formularios amigables para gestionar Clubes, Jugadores y Competencias sin depender de la terminal.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Implementación de formularios validados para la creación/edición de Clubes y Jugadores.
-            \item AC2: Interfaz de navegación básica para listar y filtrar entidades.
-            \item AC3: Sincronización en tiempo real con la base de datos SQLite.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} validación de columnas obligatorias, \textit{preview} sin persistencia, merge inteligente de entidades.
+        \item \textit{Testing requerido:} integración con fixtures Excel + consistencia de puntos de partido.
+        \item \textit{Cuestiones a desarrollar:} parser dedicado, servicio de ingesta y reporte de errores por fila.
     \end{itemize}
-    \item \textbf{US-202: Gestión de Listas de Buena Fe e Inscripciones}
+    \item \textbf{US-202: Métricas avanzadas}
     \begin{itemize}
-        \item \textit{Story:} Como DT, quiero organizar visualmente los jugadores habilitados para cada competencia.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Pantalla de gestión de listas vinculando jugadores a categorías y competencias.
-            \item AC2: Validación visual de inscripciones (ej. evitar duplicados).
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} cálculo de eFG\%, EFF, PPP, PER simplificado y comparativas equipo vs rival.
+        \item \textit{Testing requerido:} cobertura completa de fórmulas, casos límite de división por cero y NaN.
+        \item \textit{Cuestiones a desarrollar:} \texttt{formulas.py} puro y casos de uso analíticos por temporada/competencia.
+    \end{itemize}
+    \item \textbf{US-203: Integración motor estadístico}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} servicio Pandas leyendo exclusivamente vistas SQL normalizadas.
+        \item \textit{Testing requerido:} integración sobre \texttt{v\_boxscore\_completo} y \texttt{v\_jugador\_totales\_temporada}.
+        \item \textit{Cuestiones a desarrollar:} contratos de \texttt{AnalyticsService} y DTOs de métricas.
+    \end{itemize}
+    \item \textbf{US-204 (Nueva): Versionado de esquema y migraciones}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} control de versión de schema, migraciones forward/backward y validación automática al arranque.
+        \item \textit{Testing requerido:} tests de upgrade entre versiones y no pérdida de datos.
+        \item \textit{Cuestiones a desarrollar:} tabla \texttt{schema\_version}, runner de migraciones y scripts por release.
     \end{itemize}
 \end{itemize}
 
-\subsection{Hito 3: Motores de Ingesta y Análisis (v0.3)}
-\textbf{Epic E4: Estrategia de Ingesta Triple (UI Integration)}
+\subsection{Hito 3: Visualización y Reporting (v0.3)}
+\textbf{Épica E4 — Dashboards e Informes}
 \begin{itemize}
-    \item \textbf{US-301: Módulo de Importación Excel (Ges Deportivo)}
+    \item \textbf{US-301: Dashboards interactivos}
     \begin{itemize}
-        \item \textit{Story:} Como analista, quiero una zona de "Drag and Drop" para subir mis archivos Excel y procesarlos automáticamente.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Interfaz de carga con feedback visual sobre el progreso del análisis (Pandas).
-            \item AC2: Auto-creación de entidades faltantes (Clubes/Jugadores) detectadas en el Excel.
-            \item AC3: Pantalla de pre-visualización de datos importados antes de confirmar la persistencia.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} tablas de líderes y gráficos de tendencia con filtros por temporada.
+        \item \textit{Testing requerido:} verificación de ranking y tiempos máximos de generación de gráficos.
+        \item \textit{Cuestiones a desarrollar:} reporter CLI y \texttt{ChartGenerator} reutilizable por GUI.
     \end{itemize}
-    \item \textbf{US-302: Formulario de Carga Manual Post-Partido}
+    \item \textbf{US-302: Exportación profesional a PDF}
     \begin{itemize}
-        \item \textit{Story:} Como DT, quiero un formulario estructurado para cargar las estadísticas de un partido uno por uno.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Interfaz optimizada para entrada rápida de datos (Puntos, Rebotes, Asistencias).
-            \item AC2: Validación automática de totales de equipo durante la carga manual.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} boxscore + métricas, encabezados completos y convención estándar de nombres de archivo.
+        \item \textit{Testing requerido:} generación de PDF válido para partido semilla y creación de carpeta \texttt{exports/}.
+        \item \textit{Cuestiones a desarrollar:} \texttt{ExportarReporteUseCase} y \texttt{PDFReportGenerator}.
+    \end{itemize}
+    \item \textbf{US-303 (Nueva): Scouting de rival pre-partido}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} reporte comparativo último N partidos del rival y alertas de patrones recurrentes.
+        \item \textit{Testing requerido:} validación de agregaciones históricas y consistencia de filtros de competencia.
+        \item \textit{Cuestiones a desarrollar:} vistas agregadas para scouting y templates de informe táctico.
     \end{itemize}
 \end{itemize}
 
-\textbf{Epic E5: Inteligencia Deportiva}
+\subsection{Hito 4: GUI Multiplataforma y Entrega (v1.0)}
+\textbf{Épica E5 — Experiencia de Usuario Completa}
 \begin{itemize}
-    \item \textbf{US-303: Motor Estadístico y Métricas Avanzadas}
+    \item \textbf{US-401: Interfaz Flet Desktop/Mobile}
     \begin{itemize}
-        \item \textit{Story:} Como DT, quiero ver cálculos automáticos de eFG\%, PER y PPP tras cada carga de datos.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Implementación de lógica de cálculo con Pandas integrada en la UI.
-            \item AC2: Generación de resúmenes acumulados por jugador y equipo.
-        \end{itemize}
+        \item \textit{Criterios de aceptación:} navegación por pantallas, modo claro/oscuro y arranque < 3s.
+        \item \textit{Testing requerido:} pruebas de navegación y persistencia de formularios de carga.
+        \item \textit{Cuestiones a desarrollar:} \texttt{DashboardScreen}, \texttt{GameEntryScreen}, \texttt{PlayerProfileScreen}.
+    \end{itemize}
+    \item \textbf{US-402: Backup y estabilización final}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} export/import de base local, índices optimizados y cierre de bugs críticos.
+        \item \textit{Testing requerido:} restauración de backup completa y regresión funcional de casos de uso críticos.
+        \item \textit{Cuestiones a desarrollar:} flujo guiado de respaldo y checklist de hardening pre-release.
+    \end{itemize}
+    \item \textbf{US-403 (Nueva): Seguridad de datos local}
+    \begin{itemize}
+        \item \textit{Criterios de aceptación:} hardening de credenciales, encriptación opcional de DB y política de sesión segura.
+        \item \textit{Testing requerido:} pruebas de amenazas básicas (credenciales, sesión, archivos locales).
+        \item \textit{Cuestiones a desarrollar:} plan de migración a hashing robusto y soporte SQLCipher opcional.
     \end{itemize}
 \end{itemize}
-
-\subsection{Hito 4: Visualización, Reportes y Calidad (v1.0)}
-\textbf{Epic E6: Analítica Visual y Reporting}
-\begin{itemize}
-    \item \textbf{US-401: Dashboards e Informes Interactivos}
-    \begin{itemize}
-        \item \textit{Story:} Como DT, quiero gráficos de tendencia y exportación a PDF para mis informes tácticos.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Gráficos de rendimiento interactivos (Tendencias, Proyecciones).
-            \item AC2: Exportación de Box Scores y Scouting Reports en PDF profesional.
-        \end{itemize}
-    \end{itemize}
-    \item \textbf{US-402: Estabilización, Backup y Optimización}
-    \begin{itemize}
-        \item \textit{Story:} Como usuario, quiero asegurar la integridad de mis datos y la rapidez de la aplicación.
-        \item \textit{Criterios de Aceptación:}
-        \begin{itemize}
-            \item AC1: Sistema de backup automático y optimización de índices SQLite.
-            \item AC2: Limpieza final de UI/UX y corrección de bugs críticos.
-        \end{itemize}
-    \end{itemize}
-\end{itemize}
-
 
 \section{Requisitos No Funcionales (NFR)}
 
@@ -342,10 +375,13 @@ NFR-4 & Usabilidad & Carga de un partido completo en < 3 clics (desde la selecci
 Una historia de usuario se considera \textbf{Hecha} cuando:
 \begin{enumerate}
     \item El código está integrado en la rama principal sin conflictos.
-    \item Pasa las pruebas unitarias y de integración (Cobertura > 80\%).
-    \item El ADR correspondiente ha sido aprobado y documentado.
-    \item La interfaz ha sido validada en al menos dos plataformas (ej. Desktop y Mobile).
-    \item No existen fugas de memoria ni degradación del rendimiento en SQLite.
+    \item Pasa pruebas unitarias e integración con cobertura > 80\% en lógica de negocio y 100\% en fórmulas estadísticas.
+    \item Se respeta la arquitectura de capas (sin imports cruzados entre \texttt{domain} y \texttt{infrastructure}).
+    \item Si hay cambios SQL, la vista/tabla está versionada y cubierta por test de integración con datos semilla.
+    \item Si la US persiste múltiples tablas, existe evidencia de transacción atómica y rollback probado.
+    \item El ADR correspondiente fue aprobado y documentado.
+    \item La interfaz fue validada en al menos dos plataformas (ej. Desktop y Mobile).
+    \item Métodos públicos relevantes incluyen docstring y trazabilidad mínima en logs de operación.
 \end{enumerate}
 
 \section{Hoja de Ruta y Futuras Expansiones}
