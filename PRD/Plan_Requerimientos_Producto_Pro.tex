@@ -233,129 +233,277 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
 \section{Gestión de Tareas y Plan de Entregas (Consolidado)}
 
 \subsection{Hito 1: Núcleo de Datos e Interfaz CLI (v0.1)}
+\textbf{Objetivo del hito:} construir una base técnica funcional por CLI, con persistencia robusta, autenticación local, casos de uso operativos y validaciones de integridad.
+
 \textbf{Épica E1 — Infraestructura y Persistencia}
 \begin{itemize}
-    \item \textbf{US-101: Base SQLite + Vistas SQL}
+    \item \textbf{US-101: Implementación de Base de Datos SQLite y Vistas}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} AC1) existen \texttt{schema.sql}, \texttt{views.sql}, \texttt{seed.sql}; AC2) integridad referencial + restricciones \texttt{CHECK}; AC3) \texttt{v\_partidos\_resumen} y \texttt{v\_boxscore\_completo} operativas; AC4) \texttt{v\_jugador\_totales\_temporada} y \texttt{v\_listas\_detalle} operativas.
-        \item \textit{Testing requerido:} pruebas de integración sobre existencia de tablas/vistas, FKs, constraints y protección de cálculos SQL con \texttt{NULLIF/CASE} en vistas.
-        \item \textit{Cuestiones a desarrollar:} clase \texttt{SQLiteManager}, inicialización atómica y datos semilla para escenarios reales.
+        \item \textit{Objetivo funcional:} habilitar un esquema relacional local verificable para todo el ciclo del producto.
+        \item \textit{Capa de infraestructura:} clase \texttt{SQLiteManager} en \texttt{src/infrastructure/persistence/database\_manager.py} con métodos de conexión e inicialización atómica.
+        \item \textit{Base SQL obligatoria:} \texttt{src/infrastructure/persistence/sql/schema.sql}, \texttt{views.sql}, \texttt{seed.sql}.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item AC1: schema idempotente con \texttt{CREATE TABLE IF NOT EXISTS}, FKs activas, \texttt{ON DELETE/UPDATE CASCADE} y \texttt{CHECK} de métricas.
+            \item AC2: vistas operativas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
+            \item AC3: protección de división por cero mediante \texttt{NULLIF} o \texttt{CASE}.
+            \item AC4: datos semilla útiles para validar consultas y motor estadístico.
+        \end{itemize}
+        \item \textit{Reglas de negocio DB:} \texttt{idClubLocal != idClubVisitante}, coherencia \texttt{fechaHasta >= fechaDesde}, unicidad en \texttt{listaBuenaFe.idInscripcion}.
+        \item \textit{Testing mínimo:} \texttt{tests/integration/test\_database\_schema.py} cubriendo existencia de tablas/vistas, integridad referencial, constraints, seed y consultas de vistas.
     \end{itemize}
-    \item \textbf{US-102: DatabaseManager + Repositories}
+
+    \item \textbf{US-102: DatabaseManager y Patrón Repository}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} puertos en dominio y repositorios concretos tipados por agregado, mapeo a dataclasses, transacciones multi-tabla.
-        \item \textit{Testing requerido:} CRUD de integración en \texttt{:memory:} y validación de atomicidad en guardado de partido+boxscore.
-        \item \textit{Cuestiones a desarrollar:} \texttt{SQLiteUserRepository}, \texttt{SQLiteClubRepository}, \texttt{SQLitePlayerRepository}, \texttt{SQLiteGameRepository}.
+        \item \textit{Objetivo funcional:} separar acceso a datos por agregados de dominio bajo contratos tipados.
+        \item \textit{Dominio (ports):}
+        \texttt{src/domain/interfaces/user\_repository.py},
+        \texttt{club\_repository.py},
+        \texttt{player\_repository.py},
+        \texttt{game\_repository.py}.
+        \item \textit{Infraestructura (implementaciones):}
+        \texttt{src/infrastructure/persistence/sqlite\_user\_repository.py},
+        \texttt{sqlite\_club\_repository.py},
+        \texttt{sqlite\_player\_repository.py},
+        \texttt{sqlite\_game\_repository.py}.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item AC1: \texttt{connect()} activa FKs y \texttt{row\_factory=sqlite3.Row}.
+            \item AC2: los repositorios retornan dataclasses, no tuplas SQL.
+            \item AC3: la capa \texttt{domain} no importa \texttt{sqlite3/pandas}.
+            \item AC4: guardado de partido + boxscore con transacción atómica.
+        \end{itemize}
+        \item \textit{Testing mínimo:} \texttt{tests/integration/test\_repositories.py} con CRUD, búsquedas, mapeos y atomicidad.
     \end{itemize}
 \end{itemize}
 
 \textbf{Épica E2 — Lógica de Aplicación y CLI}
 \begin{itemize}
-    \item \textbf{US-103: Casos de uso administrativos}
+    \item \textbf{US-103: Gestión de Entidades (Casos de Uso)}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} alta de jugadores/clubes/competencias, vinculación de jugador a club e inscripciones con validaciones fail-fast.
-        \item \textit{Testing requerido:} unit tests de entidades y use cases con mocks + integración en SQLite.
-        \item \textit{Cuestiones a desarrollar:} DTOs de frontera, validaciones de dominio y comandos CLI administrativos.
+        \item \textit{Objetivo funcional:} implementar lógica de negocio para jugadores, clubes, competencias e inscripciones.
+        \item \textit{Entidades a crear:}
+        \texttt{src/domain/entities/usuario.py},
+        \texttt{club.py},
+        \texttt{jugador.py},
+        \texttt{jugador\_club.py},
+        \texttt{competencia.py},
+        \texttt{inscripcion.py},
+        \texttt{partido.py},
+        \texttt{estadistica\_jugador.py}.
+        \item \textit{Use cases a crear:}
+        \texttt{src/application/use\_cases/registrar\_jugador.py},
+        \texttt{crear\_club.py},
+        \texttt{vincular\_jugador\_club.py},
+        \texttt{crear\_competencia.py},
+        \texttt{inscribir\_club\_competencia.py},
+        \texttt{listar\_clubes\_usuario.py},
+        \texttt{listar\_jugadores\_club.py},
+        \texttt{listar\_partidos\_por\_club.py}.
+        \item \textit{DTOs frontera:} \texttt{src/application/dtos/jugador\_dto.py}, \texttt{club\_dto.py}, \texttt{competencia\_dto.py}, \texttt{inscripcion\_dto.py}, \texttt{partido\_resumen\_dto.py}.
+        \item \textit{Criterios de aceptación técnicos:} validación fail-fast de DNI y afiliaciones, atomicidad en inscripciones y salida tabulada de listados CLI.
+        \item \textit{Testing mínimo:} \texttt{tests/unit/test\_entities.py}, \texttt{tests/unit/test\_use\_cases\_admin.py}, más integración en SQLite \texttt{:memory:}.
     \end{itemize}
-    \item \textbf{US-104: Autenticación y sesión local}
+
+    \item \textbf{US-104: Autenticación y Sesión Local}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} hash+salt de credenciales, login local, persistencia de sesión y club activo.
-        \item \textit{Testing requerido:} unit tests de \texttt{PasswordHasher} y flujo registro/login/sesión.
-        \item \textit{Cuestiones a desarrollar:} \texttt{SessionManager}, comandos \texttt{stats auth}, control de acceso en comandos protegidos.
+        \item \textit{Objetivo funcional:} registro/login seguro y persistencia de sesión entre ejecuciones.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/security/password\_hasher.py},
+        \texttt{src/application/services/session\_manager.py},
+        \texttt{src/application/use\_cases/registrar\_entrenador.py},
+        \texttt{src/application/use\_cases/login\_local.py},
+        \texttt{src/application/dtos/auth\_dto.py}.
+        \item \textit{Comandos CLI:} \texttt{stats auth register}, \texttt{stats auth login}, \texttt{stats auth logout}.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item AC1: contraseñas nunca en texto plano.
+            \item AC2: sesión persistente en archivo local seguro.
+            \item AC3: soporte de \texttt{club\_activo\_id} en contexto de sesión.
+            \item AC4: validación de email único y políticas de password.
+        \end{itemize}
+        \item \textit{Testing mínimo:} \texttt{tests/unit/test\_auth.py} + pruebas de sesión con archivo temporal.
     \end{itemize}
-    \item \textbf{US-105: Carga de partido atómica}
+
+    \item \textbf{US-105: CargarPartido con Transacción Atómica}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} rollback total ante error parcial; validación pre-persistencia de puntos, tiros y minutos.
-        \item \textit{Testing requerido:} pruebas de rollback y mensajes de error por jugador/campo inválido.
-        \item \textit{Cuestiones a desarrollar:} \texttt{CargarPartidoUseCase} + comando \texttt{stats game add} guiado.
+        \item \textit{Objetivo funcional:} persistir partido y estadísticas en operación todo-o-nada.
+        \item \textit{Archivos a crear:}
+        \texttt{src/application/dtos/partido\_dto.py},
+        \texttt{src/application/use\_cases/cargar\_partido.py},
+        \texttt{tests/unit/test\_use\_case\_cargar\_partido.py}.
+        \item \textit{Criterios de aceptación técnicos:} rollback completo ante error parcial, validación previa de DTOs y cero SQL en casos de uso.
+        \item \textit{Reglas críticas:} \texttt{convertidos <= lanzados}, minutos válidos, no negativos y consistencia de puntos por fórmula.
+        \item \textit{Testing mínimo:} unit + integración con DB en memoria verificando rollback.
     \end{itemize}
-    \item \textbf{US-106: CLI por Command Pattern}
+
+    \item \textbf{US-106: CLI con Command Pattern}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} subcomandos desacoplados, salida tabulada y uso de vistas SQL en listados.
-        \item \textit{Testing requerido:} pruebas de flujo de sesión y cobertura de comandos críticos.
-        \item \textit{Cuestiones a desarrollar:} \texttt{main\_cli.py}, registro modular de comandos y formateadores.
+        \item \textit{Objetivo funcional:} CLI extensible y mantenible con subcomandos desacoplados.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/ui/cli/main\_cli.py},
+        \texttt{src/infrastructure/ui/cli/commands/auth\_commands.py},
+        \texttt{club\_commands.py},
+        \texttt{player\_commands.py},
+        \texttt{game\_commands.py},
+        \texttt{src/infrastructure/ui/cli/formatters/table\_formatter.py}.
+        \item \textit{Criterios de aceptación técnicos:} comandos protegidos por sesión, listados basados en vistas SQL y errores sin tracebacks.
+        \item \textit{Testing mínimo:} tests de flujo de comandos, permisos y formato de salida.
     \end{itemize}
-    \item \textbf{US-107 (Nueva): Monitoreo y trazabilidad operativa}
+
+    \item \textbf{US-107 (Nueva): Monitoreo y Trazabilidad Operativa}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} logging estructurado por comando/caso de uso con niveles DEBUG/INFO/WARNING/ERROR y correlación por ejecución usando \texttt{correlation\_id} UUIDv4 generado al inicio del comando y propagado a casos de uso/repositorios.
-        \item \textit{Criterio de seguridad:} sanitización/redacción obligatoria de datos sensibles antes de escribir logs.
-        \item \textit{Testing requerido:} tests automáticos de no exposición de secretos (contraseñas, tokens, IDs de sesión) y presencia de eventos clave (auth, importación, persistencia).
-        \item \textit{Cuestiones a desarrollar:} módulo de logging central y política de retención local de logs.
+        \item \textit{Objetivo funcional:} observabilidad transversal para depuración y soporte.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/logging/logger\_config.py},
+        \texttt{src/application/services/execution\_context.py},
+        \texttt{tests/unit/test\_logging\_redaction.py}.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item AC1: niveles DEBUG/INFO/WARNING/ERROR en formato estructurado.
+            \item AC2: \texttt{correlation\_id} UUIDv4 generado al inicio de cada comando y propagado a use cases/repos.
+            \item AC3: redacción de secretos (password, tokens, session-id, hashes sensibles).
+        \end{itemize}
+        \item \textit{Testing mínimo:} pruebas automáticas de redacción de secretos y trazabilidad de eventos críticos.
     \end{itemize}
 \end{itemize}
 
-\subsection{Hito 2: Ingesta y Analítica Pro (v0.2)}
+\subsection{Hito 2: Motor de Ingesta y Análisis (v0.2)}
+\textbf{Objetivo del hito:} automatizar la carga desde Ges Deportivo y producir métricas avanzadas confiables.
+
 \textbf{Épica E3 — Integración Ges Deportivo}
 \begin{itemize}
-    \item \textbf{US-201: Parseo de Excel con Pandas}
+    \item \textbf{US-201: Parseo de Planillas Excel con Pandas}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} validación de columnas obligatorias, \textit{vista previa} sin persistencia, merge inteligente de entidades.
-        \item \textit{Testing requerido:} integración con fixtures Excel + consistencia de puntos de partido.
-        \item \textit{Cuestiones a desarrollar:} parser dedicado, servicio de ingesta y reporte de errores por fila.
+        \item \textit{Objetivo funcional:} convertir planillas externas en datos persistibles sin transcripción manual.
+        \item \textit{Archivos a crear:}
+        \texttt{src/application/use\_cases/importar\_excel.py},
+        \texttt{src/application/dtos/ingest\_dto.py},
+        \texttt{src/infrastructure/ingest/excel\_parser.py},
+        \texttt{src/infrastructure/ingest/ingest\_service.py},
+        \texttt{tests/integration/test\_excel\_import.py},
+        \texttt{tests/fixtures/ges\_deportivo\_sample.xlsx}.
+        \item \textit{Criterios de aceptación técnicos:} validación de formato, merge inteligente, consistencia de puntos, preview sin persistencia y log de resultados.
+        \item \textit{Reglas:} filas sin DNI se rechazan con log, clubes/competencias faltantes se crean de forma controlada.
     \end{itemize}
-    \item \textbf{US-202: Métricas avanzadas}
+
+    \item \textbf{US-202: Cálculo de Métricas Avanzadas}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} cálculo de eFG\%, EFF, PPP, PER simplificado y comparativas equipo vs rival.
-        \item \textit{Testing requerido:} cobertura completa de fórmulas, casos límite de división por cero y NaN.
-        \item \textit{Cuestiones a desarrollar:} \texttt{formulas.py} puro y casos de uso analíticos por temporada/competencia.
+        \item \textit{Objetivo funcional:} transformar boxscore crudo en indicadores tácticos accionables.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/analytics/formulas.py},
+        \texttt{src/application/use\_cases/calcular\_estadisticas\_avanzadas.py},
+        \texttt{src/application/use\_cases/generar\_tabla\_comparativa.py},
+        \texttt{src/application/dtos/metricas\_dto.py},
+        \texttt{tests/unit/test\_formulas.py}.
+        \item \textit{Fórmulas mínimas:} eFG\%, EFF, PPP, posesiones y porcentaje de rebotes.
+        \item \textit{Criterios de aceptación técnicos:} manejo de ceros/NaN, filtros por temporada/competencia, comparativa equipo vs rival.
     \end{itemize}
-    \item \textbf{US-203: Integración motor estadístico}
+
+    \item \textbf{US-203: Integración del Motor Estadístico}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} servicio Pandas leyendo exclusivamente vistas SQL normalizadas.
-        \item \textit{Testing requerido:} integración sobre \texttt{v\_boxscore\_completo} y \texttt{v\_jugador\_totales\_temporada}.
-        \item \textit{Cuestiones a desarrollar:} contratos de \texttt{AnalyticsService} y DTOs de métricas.
+        \item \textit{Objetivo funcional:} conectar vistas SQL con servicios analíticos sin acoplar fórmula y persistencia.
+        \item \textit{Archivos a crear:}
+        \texttt{src/domain/interfaces/analytics\_service.py},
+        \texttt{src/infrastructure/analytics/pandas\_analytics\_service.py},
+        \texttt{src/application/use\_cases/calcular\_estadisticas\_partido.py},
+        \texttt{tests/integration/test\_analytics\_service.py}.
+        \item \textit{Criterios de aceptación técnicos:} lectura exclusiva desde vistas, columnas normalizadas y cobertura completa de fórmulas.
     \end{itemize}
-    \item \textbf{US-204 (Nueva): Versionado de esquema y migraciones}
+
+    \item \textbf{US-204 (Nueva): Versionado de Esquema y Migraciones}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} control de versión de schema, migraciones forward/backward y validación automática al arranque.
-        \item \textit{Testing requerido:} tests de upgrade entre versiones y no pérdida de datos.
-        \item \textit{Cuestiones a desarrollar:} tabla \texttt{schema\_version}, runner de migraciones y scripts por release.
+        \item \textit{Objetivo funcional:} asegurar evolución de base sin pérdida de datos entre versiones.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/persistence/sql/migrations/001\_init.sql},
+        \texttt{002\_*.sql},
+        \texttt{src/infrastructure/persistence/migration\_runner.py},
+        \texttt{tests/integration/test\_migrations.py}.
+        \item \textit{Criterios de aceptación técnicos:} tabla \texttt{schema\_version}, migraciones forward/backward y verificación en arranque.
+        \item \textit{Testing mínimo:} upgrade incremental y pruebas de no regresión de datos.
     \end{itemize}
 \end{itemize}
 
-\subsection{Hito 3: Visualización y Reporting (v0.3)}
+\subsection{Hito 3: Visualización Pro y Reporting (v0.3)}
+\textbf{Objetivo del hito:} convertir estadísticas en tableros e informes consumibles para decisiones tácticas.
+
 \textbf{Épica E4 — Dashboards e Informes}
 \begin{itemize}
-    \item \textbf{US-301: Dashboards interactivos}
+    \item \textbf{US-301: Dashboards e Informes Interactivos}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} tablas de líderes y gráficos de tendencia con filtros por temporada.
-        \item \textit{Testing requerido:} verificación de ranking y tiempos máximos de generación de gráficos.
-        \item \textit{Cuestiones a desarrollar:} reporter CLI y \texttt{ChartGenerator} reutilizable por GUI.
+        \item \textit{Archivos a crear:}
+        \texttt{src/application/use\_cases/obtener\_lideres\_temporada.py},
+        \texttt{src/application/use\_cases/generar\_grafico\_rendimiento.py},
+        \texttt{src/infrastructure/analytics/chart\_generator.py},
+        \texttt{src/infrastructure/reports/cli\_leaderboard\_reporter.py}.
+        \item \textit{Criterios de aceptación técnicos:} top-5 por rubro con \texttt{rich}, generación de gráficos < 2s y filtros por temporada.
+        \item \textit{Testing mínimo:} ranking y tiempos de render sobre dataset semilla.
     \end{itemize}
-    \item \textbf{US-302: Exportación profesional a PDF}
+
+    \item \textbf{US-302: Exportación Profesional a PDF}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} boxscore + métricas, encabezados completos y convención estándar de nombres de archivo.
-        \item \textit{Testing requerido:} generación de PDF válido para partido semilla y creación de carpeta \texttt{exports/}.
-        \item \textit{Cuestiones a desarrollar:} \texttt{ExportarReporteUseCase} y \texttt{PDFReportGenerator}.
+        \item \textit{Archivos a crear:}
+        \texttt{src/application/use\_cases/exportar\_reporte.py},
+        \texttt{src/application/dtos/reporte\_dto.py},
+        \texttt{src/infrastructure/reports/pdf\_generator.py},
+        \texttt{tests/integration/test\_pdf\_export.py}.
+        \item \textit{Criterios de aceptación técnicos:} cabecera profesional, tablas alineadas, convención de nombre y creación automática de \texttt{exports/}.
     \end{itemize}
-    \item \textbf{US-303 (Nueva): Scouting de rival pre-partido}
+
+    \item \textbf{US-303 (Nueva): Scouting de Rival Pre-Partido}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} reporte comparativo último N partidos del rival y alertas de patrones recurrentes.
-        \item \textit{Testing requerido:} validación de agregaciones históricas y consistencia de filtros de competencia.
-        \item \textit{Cuestiones a desarrollar:} vistas agregadas para scouting y templates de informe táctico.
+        \item \textit{Objetivo funcional:} entregar reporte táctico del rival previo al encuentro.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/persistence/sql/views\_scouting.sql},
+        \texttt{src/application/use\_cases/generar\_scouting\_rival.py},
+        \texttt{src/application/dtos/scouting\_dto.py},
+        \texttt{tests/integration/test\_scouting\_rival.py}.
+        \item \textit{Criterios de aceptación técnicos:} comparación últimos N partidos, detección de patrones y consistencia de filtros por competencia.
     \end{itemize}
 \end{itemize}
 
-\subsection{Hito 4: GUI Multiplataforma y Entrega (v1.0)}
-\textbf{Épica E5 — Experiencia de Usuario Completa}
+\subsection{Hito 4: Interfaz Multiplataforma y Entrega (v1.0)}
+\textbf{Objetivo del hito:} migrar a experiencia visual completa y cerrar hardening de release.
+
+\textbf{Épica E5 — Interfaz de Usuario Adaptable (GUI)}
 \begin{itemize}
-    \item \textbf{US-401: Interfaz Flet Desktop/Mobile}
+    \item \textbf{US-401: Implementación de Interfaz Flet (Desktop/Mobile)}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} navegación por pantallas, modo claro/oscuro y arranque < 3s.
-        \item \textit{Testing requerido:} pruebas de navegación y persistencia de formularios de carga.
-        \item \textit{Cuestiones a desarrollar:} \texttt{DashboardScreen}, \texttt{GameEntryScreen}, \texttt{PlayerProfileScreen}.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/ui/flet/app.py},
+        \texttt{src/infrastructure/ui/flet/screens/dashboard\_screen.py},
+        \texttt{game\_entry\_screen.py},
+        \texttt{player\_profile\_screen.py},
+        \texttt{src/infrastructure/ui/flet/components/chart\_component.py}.
+        \item \textit{Criterios de aceptación técnicos:} arranque < 3s, modo oscuro/claro, diseño responsive y navegación estable.
     \end{itemize}
-    \item \textbf{US-402: Backup y estabilización final}
+
+    \item \textbf{US-402: Backup y Estabilización Final}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} export/import de base local, índices optimizados y cierre de bugs críticos.
-        \item \textit{Testing requerido:} restauración de backup completa y regresión funcional de casos de uso críticos.
-        \item \textit{Cuestiones a desarrollar:} flujo guiado de respaldo y lista de verificación de fortalecimiento pre-release.
+        \item \textit{Archivos a crear:}
+        \texttt{src/application/use\_cases/exportar\_backup.py},
+        \texttt{src/application/use\_cases/restaurar\_backup.py},
+        \texttt{src/infrastructure/persistence/backup\_service.py},
+        \texttt{tests/integration/test\_backup\_restore.py}.
+        \item \textit{Criterios de aceptación técnicos:} backup/restore validado, optimización de índices y cierre de defectos críticos pre-release.
     \end{itemize}
-    \item \textbf{US-403 (Nueva): Seguridad de datos local}
+
+    \item \textbf{US-403 (Nueva): Seguridad de Datos Local}
     \begin{itemize}
-        \item \textit{Criterios de aceptación:} AC1) credenciales con mínimo 12 caracteres sin reglas rígidas de composición; AC2) bloqueo de contraseñas comprometidas con lista local versionada y actualización mensual; AC3) hash robusto bcrypt/Argon2 con salt por usuario; AC4) cifrado opcional de DB; AC5) política de sesión segura.
-        \item \textit{Testing requerido:} pruebas de amenazas básicas (credenciales, sesión, archivos locales).
-        \item \textit{Cuestiones a desarrollar:} plan de migración a hashing robusto y soporte SQLCipher opcional.
+        \item \textit{Archivos a crear:}
+        \texttt{src/infrastructure/security/credential\_policy.py},
+        \texttt{src/infrastructure/security/compromised\_password\_store.py},
+        \texttt{src/infrastructure/security/db\_encryption\_adapter.py},
+        \texttt{tests/unit/test\_credential\_policy.py}.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item AC1: credenciales de mínimo 12 caracteres y validación de fortaleza.
+            \item AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI.
+            \item AC3: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
+            \item AC4: cifrado opcional de base local con estrategia compatible SQLCipher.
+            \item AC5: política de sesión segura (expiración, revocación y limpieza idempotente).
+        \end{itemize}
+        \item \textit{Testing mínimo:} pruebas de seguridad en credenciales, sesión y archivos locales.
     \end{itemize}
 \end{itemize}
 
