@@ -257,7 +257,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
             \item \texttt{[ ]} AC3: \texttt{CHECK constraints} aplicadas en métricas y campos de integridad.
             \item \texttt{[ ]} AC4: vistas operativas \texttt{v\_partidos\_resumen}, \texttt{v\_boxscore\_completo}, \texttt{v\_jugador\_totales\_temporada}, \texttt{v\_listas\_detalle}.
             \item \texttt{[ ]} AC5: todas las divisiones de vistas protegidas con \texttt{NULLIF}/\texttt{CASE}.
-            \item \texttt{[ ]} AC6: datos semilla suficientes para probar consultas, listados y cálculos.
+            \item \texttt{[ ]} AC6: datos semilla mínimos de referencia: 1 usuario, 2 clubes, 10 jugadores (5 por club), 1 competencia y 3 partidos con boxscore completo.
             \item \texttt{[ ]} AC7: definición de columnas estable (nombres y tipos) para consumo desde Pandas sin transformaciones ambiguas.
         \end{itemize}
         \item \textit{Reglas de negocio DB:} \texttt{idClubLocal != idClubVisitante}, coherencia \texttt{fechaHasta >= fechaDesde}, unicidad en \texttt{listaBuenaFe.idInscripcion}.
@@ -318,7 +318,14 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{listar\_jugadores\_club.py},
         \texttt{listar\_partidos\_por\_club.py}.
         \item \textit{DTOs frontera:} \texttt{src/application/dtos/jugador\_dto.py}, \texttt{club\_dto.py}, \texttt{competencia\_dto.py}, \texttt{inscripcion\_dto.py}, \texttt{partido\_resumen\_dto.py}.
-        \item \textit{Criterios de aceptación técnicos:} validación fail-fast de DNI y afiliaciones, atomicidad en inscripciones y salida tabulada de listados CLI.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: validación fail-fast de DNI inválido o duplicado.
+            \item \texttt{[ ]} AC2: control de afiliaciones activas para evitar superposición de vínculos.
+            \item \texttt{[ ]} AC3: alta de entidades con reglas de dominio verificadas antes de persistir.
+            \item \texttt{[ ]} AC4: operaciones de inscripción con comportamiento atómico.
+            \item \texttt{[ ]} AC5: listados CLI tabulados y consistentes con vistas SQL.
+        \end{itemize}
         \item \textit{Testing mínimo:} \texttt{tests/unit/test\_entities.py}, \texttt{tests/unit/test\_use\_cases\_admin.py}, más integración en SQLite \texttt{:memory:}.
     \end{itemize}
 
@@ -349,7 +356,13 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/application/dtos/partido\_dto.py},
         \texttt{src/application/use\_cases/cargar\_partido.py},
         \texttt{tests/unit/test\_use\_case\_cargar\_partido.py}.
-        \item \textit{Criterios de aceptación técnicos:} rollback completo ante error parcial, validación previa de DTOs y cero SQL en casos de uso.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: rollback completo ante cualquier error parcial del boxscore.
+            \item \texttt{[ ]} AC2: validación completa de DTOs antes de la primera operación de DB.
+            \item \texttt{[ ]} AC3: mensajes de error con jugador/campo inválido identificable.
+            \item \texttt{[ ]} AC4: casos de uso sin SQL embebido (delegación total al repositorio).
+        \end{itemize}
         \item \textit{Reglas críticas:} \texttt{convertidos <= lanzados}, minutos válidos, no negativos y consistencia de puntos por fórmula.
         \item \textit{Testing mínimo:} unit + integración con DB en memoria verificando rollback.
     \end{itemize}
@@ -364,7 +377,13 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{player\_commands.py},
         \texttt{game\_commands.py},
         \texttt{src/infrastructure/ui/cli/formatters/table\_formatter.py}.
-        \item \textit{Criterios de aceptación técnicos:} comandos protegidos por sesión, listados basados en vistas SQL y errores sin tracebacks.
+        \item \textit{Criterios de aceptación técnicos:}
+        \begin{itemize}
+            \item \texttt{[ ]} AC1: comandos protegidos requieren sesión autenticada cuando corresponda.
+            \item \texttt{[ ]} AC2: comandos de dominio requieren club activo cuando aplique.
+            \item \texttt{[ ]} AC3: listados de lectura consumen vistas SQL y no consultas ad-hoc dispersas.
+            \item \texttt{[ ]} AC4: errores funcionales se muestran sin traceback técnico al usuario final.
+        \end{itemize}
         \item \textit{Testing mínimo:} tests de flujo de comandos, permisos y formato de salida.
     \end{itemize}
 
@@ -438,8 +457,9 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
             \item \texttt{[ ]} AC4: consistencia entre suma de puntos individuales y marcador de partido.
             \item \texttt{[ ]} AC5: importación atómica por partido con rollback ante error.
             \item \texttt{[ ]} AC6: reporte final con cantidad de creados, actualizados, rechazados y causa.
+            \item \texttt{[ ]} AC7: filas sin DNI se rechazan explícitamente y quedan registradas en el reporte.
+            \item \texttt{[ ]} AC8: clubes/competencias faltantes se crean de manera controlada y trazable.
         \end{itemize}
-        \item \textit{Reglas:} filas sin DNI se rechazan con log, clubes/competencias faltantes se crean de forma controlada.
         \item \textit{Testing mínimo:}
         \begin{itemize}
             \item Unitario parser: mapeo de columnas, tipado y errores de formato.
@@ -549,7 +569,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \begin{itemize}
             \item \texttt{[ ]} AC1: top-5 por rubro (PTS/REB/AST/EFF) en formato tabular legible.
             \item \texttt{[ ]} AC2: gráficos de tendencia por jugador/equipo con filtro por temporada y competencia.
-            \item \texttt{[ ]} AC3: generación de gráfico en tiempo objetivo (< 2s) para dataset semilla.
+            \item \texttt{[ ]} AC3: generación de gráfico en tiempo objetivo (< 2s) para dataset de referencia (3 temporadas, 20 equipos, 1.200 filas de boxscore).
             \item \texttt{[ ]} AC4: consistencia entre valores graficados y valores de vistas SQL.
         \end{itemize}
         \item \textit{Testing mínimo:}
@@ -624,7 +644,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/infrastructure/ui/flet/components/chart\_component.py}.
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
-            \item \texttt{[ ]} AC1: arranque inicial en menos de 3 segundos en entorno objetivo.
+            \item \texttt{[ ]} AC1: arranque inicial en menos de 3 segundos en entorno objetivo (desktop con 4GB RAM, SSD y Python 3.11+).
             \item \texttt{[ ]} AC2: navegación estable entre pantallas principales sin pérdida de estado.
             \item \texttt{[ ]} AC3: soporte tema claro/oscuro y diseño responsive desktop/mobile.
             \item \texttt{[ ]} AC4: formularios con validación visual y mensajes de error entendibles.
