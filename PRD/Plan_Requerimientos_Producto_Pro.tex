@@ -375,7 +375,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \texttt{src/infrastructure/logging/logger\_config.py},
         \texttt{src/application/services/execution\_context.py},
         \texttt{src/infrastructure/logging/seq\_handler.py},
-        \texttt{docker-compose.yml} (perfil opcional observabilidad con SEQ),
+        \texttt{docker-compose.yml} (perfil opcional observabilidad con Seq),
         \texttt{tests/unit/test\_execution\_context.py},
         \texttt{tests/unit/test\_logging\_redaction.py}.
         \item \textit{Eventos de log obligatorios:}
@@ -389,7 +389,7 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \item \textit{Modos de operación de logging:}
         \begin{itemize}
             \item \textbf{Modo local-file:} logs en \texttt{./logs/statspro.log} con rotación local.
-            \item \textbf{Modo SEQ:} levantar SEQ con \texttt{docker-compose.yml}, enviar logs estructurados al endpoint HTTP de SEQ y analizar trazas en UI web.
+            \item \textbf{Modo Seq:} levantar Seq con \texttt{docker-compose.yml}, enviar logs estructurados al endpoint HTTP de Seq y analizar trazas en UI web.
         \end{itemize}
         \item \textit{Rol de \texttt{execution\_context.py}:}
         \begin{itemize}
@@ -403,14 +403,14 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
             \item \texttt{[ ]} AC2: \texttt{correlation\_id} UUIDv4 generado al inicio de cada comando y propagado a use cases/repos.
             \item \texttt{[ ]} AC3: redacción de secretos (password, tokens, session-id, hashes sensibles).
             \item \texttt{[ ]} AC4: selección de sink por configuración (\texttt{local-file} o \texttt{seq}) sin cambiar código de negocio.
-            \item \texttt{[ ]} AC5: en modo SEQ, eventos visibles por \texttt{correlation\_id}, \texttt{command\_name} y nivel.
+            \item \texttt{[ ]} AC5: en modo Seq, eventos visibles por \texttt{correlation\_id}, \texttt{command\_name} y nivel.
         \end{itemize}
         \item \textit{Testing mínimo:}
         \begin{itemize}
             \item Unitario: creación/propagación de \texttt{execution\_context} y validación de campos obligatorios.
             \item Unitario: pruebas de redacción de secretos y normalización de eventos.
             \item Integración: flujo CLI completo verificando correlación de logs de punta a punta.
-            \item Integración opcional observabilidad: prueba de envío de eventos a SEQ levantado por \texttt{docker-compose}.
+            \item Integración opcional observabilidad: prueba de envío de eventos a Seq levantado por \texttt{docker-compose}.
         \end{itemize}
     \end{itemize}
 \end{itemize}
@@ -672,11 +672,13 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
         \item \textit{Criterios de aceptación técnicos:}
         \begin{itemize}
             \item \texttt{[ ]} AC1: credenciales de mínimo 12 caracteres y validación de fortaleza.
-            \item \texttt{[ ]} AC2: bloqueo de contraseñas comprometidas mediante lista local versionada, actualización mensual y validación en CI según \texttt{docs/security/password\_compromised\_update\_procedure.md}.
-            \item \texttt{[ ]} AC3: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
-            \item \texttt{[ ]} AC4: cifrado opcional de base local con estrategia compatible SQLCipher.
-            \item \texttt{[ ]} AC5: política de sesión segura (expiración, revocación y limpieza idempotente).
-            \item \texttt{[ ]} AC6: trazabilidad de eventos de seguridad sin exponer datos sensibles.
+            \item \texttt{[ ]} AC2: bloqueo efectivo de contraseñas comprometidas mediante lista local versionada.
+            \item \texttt{[ ]} AC3: actualización mensual de la lista de comprometidas siguiendo \texttt{docs/security/password\_compromised\_update\_procedure.md}.
+            \item \texttt{[ ]} AC4: validación en CI de versión vigente y checksum de la lista de comprometidas.
+            \item \texttt{[ ]} AC5: hashing robusto (\texttt{bcrypt/Argon2}) con salt por usuario.
+            \item \texttt{[ ]} AC6: cifrado opcional de base local con estrategia compatible SQLCipher.
+            \item \texttt{[ ]} AC7: política de sesión segura (expiración, revocación y limpieza idempotente).
+            \item \texttt{[ ]} AC8: trazabilidad de eventos de seguridad sin exponer datos sensibles.
         \end{itemize}
         \item \textit{Testing mínimo:}
         \begin{itemize}
