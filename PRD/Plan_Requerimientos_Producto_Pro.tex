@@ -390,13 +390,8 @@ ADR-008 & Estrategia de Backup & Pendiente & Exportación/restauración de base 
     \item \textbf{US-107 (Nueva): Monitoreo y Trazabilidad Operativa}
     \begin{itemize}
         \item \textit{Objetivo funcional:} observabilidad transversal para depuración y soporte.
-        \item \textit{Archivos a crear:}
-        \texttt{src/infrastructure/logging/logger\_config.py},
-        \texttt{src/application/services/execution\_context.py},
-        \texttt{src/infrastructure/logging/seq\_handler.py},
-        \texttt{docker-compose.yml} (perfil opcional observabilidad con Seq),
-        \texttt{tests/unit/test\_execution\_context.py},
-        \texttt{tests/unit/test\_logging\_redaction.py}.
+        \item Archivos a crear: src/infrastructure/logging/logger\_config.py, src/application/services/execution\_context.py, src/infrastructure/logging/seq\_handler.py,
+        docker-compose.yml (perfil opcional observabilidad con Seq), tests/unit/test\_execution\_context.py, tests/unit/test\_logging\_redaction.py.
         \item \textit{Eventos de log obligatorios:}
         \begin{itemize}
             \item inicio/fin de comando CLI, con resultado (OK/ERROR) y duración;
